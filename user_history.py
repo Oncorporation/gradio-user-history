@@ -388,7 +388,7 @@ def _fetch_admins() -> List[str]:
     # Running in Space => try to fetch organization members
     # Otherwise, it's not an organization => namespace is the user
     namespace = space_id.split("/")[0]
-    response = requests.get("https://huggingface.co/api/organizations/{namespace}/members")
+    response = requests.get(f"https://huggingface.co/api/organizations/{namespace}/members")
     if response.status_code == 200:
         return sorted(member["user"] for member in response.json())
     return [namespace]
