@@ -140,5 +140,5 @@ dmypy.json
 cspell.json
 
 mock
-user_history
-_history_snapshots
+_user_history
+_user_history_exports

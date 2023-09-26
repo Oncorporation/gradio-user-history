@@ -3,7 +3,7 @@
 quality:
 	black --check .
 	ruff .
-	mypy .
+	mypy --install-types .
 
 style:
 	black .

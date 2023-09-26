@@ -3,25 +3,21 @@ import os
 import shutil
 import warnings
 from datetime import datetime
+from functools import cache
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple
 from uuid import uuid4
 
 import gradio as gr
 import numpy as np
+import requests
 from filelock import FileLock
 from PIL.Image import Image
 
 
-def setup(
-    folder_path: str | Path | None = None,
-    delete_button: bool = True,
-    export_button: bool = True,
-) -> None:
+def setup(folder_path: str | Path | None = None) -> None:
     user_history = _UserHistory()
     user_history.folder_path = _resolve_folder_path(folder_path)
-    user_history.delete_button = delete_button
-    user_history.export_button = export_button
     user_history.initialized = True
 
 
@@ -33,20 +29,19 @@ def render() -> None:
         print("Initializing user history with default config. Use `user_history.setup(...)` to customize.")
         setup()
 
-    # deactivate if no persistent storage
-    if user_history.folder_path is None:
-        gr.Markdown(
-            "User history is deactivated as no Persistent Storage volume has been found. Please contact the Space"
-            " owner to either assign a [Persistent Storage](https://huggingface.co/docs/hub/spaces-storage) or set"
-            " `folder_path` to a temporary folder."
-        )
-        return
-
     # Render user history tab
     gr.Markdown(
         "## Your past generations\n\n(Log in to keep a gallery of your previous generations."
         " Your history will be saved and available on your next visit.)"
     )
+
+    if os.getenv("SYSTEM") == "spaces" and not os.path.exists("/data"):
+        gr.Markdown(
+            "**⚠️ Persistent storage is disabled, meaning your history will be lost if the Space gets restarted."
+            " Only the Space owner can setup a Persistent Storage. If you are not the Space owner, consider"
+            " duplicating this Space to set your own storage.⚠️**"
+        )
+
     with gr.Row():
         gr.LoginButton(min_width=250)
         gr.LogoutButton(min_width=250)
@@ -99,6 +94,9 @@ def render() -> None:
         queue=False,
     )
 
+    # Admin section (only shown locally or when logged in as Space owner)
+    _admin_section()
+
 
 def save_image(
     profile: gr.OAuthProfile | None,
@@ -142,10 +140,7 @@ def save_image(
 class _UserHistory(object):
     _instance = None
     initialized: bool = False
-
-    folder_path: Path | None
-    delete_button: bool
-    export_button: bool
+    folder_path: Path
 
     def __new__(cls):
         # Using singleton pattern => we don't want to expose an object (more complex to use) but still want to keep
@@ -155,16 +150,12 @@ class _UserHistory(object):
         return cls._instance
 
     def _user_path(self, username: str) -> Path:
-        if self.folder_path is None:
-            raise Exception("User history is deactivated.")
         path = self.folder_path / username
         path.mkdir(parents=True, exist_ok=True)
         return path
 
     def _user_lock(self, username: str) -> FileLock:
         """Ensure history is not corrupted if concurrent calls."""
-        if self.folder_path is None:
-            raise Exception("User history is deactivated.")
         return FileLock(self.folder_path / f"{username}.lock")  # lock outside of folder => better when exporting ZIP
 
     def _user_jsonl_path(self, username: str) -> Path:
@@ -265,22 +256,137 @@ def _copy_image(image: Image | np.ndarray | str | Path, dst_folder: Path) -> Pat
     raise ValueError(f"Unsupported image type: {type(image)}")
 
 
-def _resolve_folder_path(folder_path: str | Path | None) -> Path | None:
+def _resolve_folder_path(folder_path: str | Path | None) -> Path:
     if folder_path is not None:
         return Path(folder_path).expanduser().resolve()
 
-    if os.getenv("SYSTEM") == "spaces":
-        if os.path.exists("/data"):  # Persistent storage is enabled!
-            return Path("/data") / "user_history"
-        else:
-            return None  # No persistent storage => no user history
+    if os.getenv("SYSTEM") == "spaces" and os.path.exists("/data"):  # Persistent storage is enabled!
+        return Path("/data") / "_user_history"
 
-    # Not in a Space => local folder
-    return Path(__file__).parent / "user_history"
+    # Not in a Space or Persistent storage not enabled => local folder
+    return Path(__file__).parent / "_user_history"
 
 
 def _archives_path() -> Path:
     # Doesn't have to be on persistent storage as it's only used for download
-    path = Path(__file__).parent / "_history_snapshots"
+    path = Path(__file__).parent / "_user_history_exports"
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+#################
+# Admin section #
+#################
+
+
+def _admin_section() -> None:
+    title = gr.Markdown()
+    title.attach_load_event(_display_if_admin(), every=None)
+
+
+def _display_if_admin() -> Callable:
+    def _inner(profile: gr.OAuthProfile | None) -> str:
+        if profile is None:
+            return ""
+        if profile["preferred_username"] in _fetch_admins():
+            return _admin_content()
+        return ""
+
+    return _inner
+
+
+def _admin_content() -> str:
+    return f"""
+## Admin section
+
+Running on **{os.getenv("SYSTEM", "local")}** (id: {os.getenv("SPACE_ID")}). {_get_msg_is_persistent_storage_enabled()}
+
+Admins: {', '.join(_fetch_admins())}
+
+{_get_nb_users()} user(s), {_get_nb_images()} image(s)
+
+### Configuration
+
+History folder: *{_UserHistory().folder_path}*
+
+Exports folder: *{_archives_path()}*
+
+### Disk usage
+
+{_disk_space_warning_message()}
+"""
+
+
+def _get_nb_users() -> int:
+    user_history = _UserHistory()
+    if not user_history.initialized:
+        return 0
+    if user_history.folder_path is not None:
+        return len([path for path in user_history.folder_path.iterdir() if path.is_dir()])
+    return 0
+
+
+def _get_nb_images() -> int:
+    user_history = _UserHistory()
+    if not user_history.initialized:
+        return 0
+    if user_history.folder_path is not None:
+        return len([path for path in user_history.folder_path.glob("*/images/*")])
+    return 0
+
+
+def _get_msg_is_persistent_storage_enabled() -> str:
+    if os.getenv("SYSTEM") == "spaces":
+        if os.path.exists("/data"):
+            return "Persistent storage is enabled."
+        else:
+            return (
+                "Persistent storage is not enabled. This means that user histories will be deleted when the Space is"
+                " restarted. Consider adding a Persistent Storage in your Space settings."
+            )
+    return ""
+
+
+def _disk_space_warning_message() -> str:
+    user_history = _UserHistory()
+    if not user_history.initialized:
+        return ""
+
+    message = ""
+    if user_history.folder_path is not None:
+        total, used, _ = _get_disk_usage(user_history.folder_path)
+        message += f"History folder: **{used / 1e9 :.0f}/{total / 1e9 :.0f}GB** used ({100*used/total :.0f}%)."
+
+    total, used, _ = _get_disk_usage(_archives_path())
+    message += f"\n\nExports folder: **{used / 1e9 :.0f}/{total / 1e9 :.0f}GB** used ({100*used/total :.0f}%)."
+
+    return f"{message.strip()}"
+
+
+def _get_disk_usage(path: Path) -> Tuple[int, int, int]:
+    for path in [path] + list(path.parents):  # first check target_dir, then each parents one by one
+        try:
+            return shutil.disk_usage(path)
+        except OSError:  # if doesn't exist or can't read => fail silently and try parent one
+            pass
+    return 0, 0, 0
+
+
+@cache
+def _fetch_admins() -> List[str]:
+    # Running locally => fake user is admin
+    if os.getenv("SYSTEM") != "spaces":
+        return ["FakeGradioUser"]
+
+    # Running in Space but no space_id => ???
+    space_id = os.getenv("SPACE_ID")
+    if space_id is None:
+        return ["Unknown"]
+
+    # Running in Space => try to fetch organization members
+    # Otherwise, it's not an organization => namespace is the user
+    namespace = space_id.split("/")[0]
+    response = requests.get("https://huggingface.co/api/organizations/{namespace}/members")
+    if response.status_code == 200:
+        return sorted(member["user"] for member in response.json())
+    return [namespace]
