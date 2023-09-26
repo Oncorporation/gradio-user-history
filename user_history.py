@@ -286,6 +286,8 @@ def _admin_section() -> None:
 
 def _display_if_admin() -> Callable:
     def _inner(profile: gr.OAuthProfile | None) -> str:
+        print(_admin_content())
+
         if profile is None:
             return ""
         if profile["preferred_username"] in _fetch_admins():
