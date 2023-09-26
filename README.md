@@ -1,6 +1,6 @@
 ---
 title: Gradio User History
-emoji: 🌍
+emoji: 🖼️
 colorFrom: gray
 colorTo: indigo
 sdk: gradio
