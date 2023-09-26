@@ -1,0 +1,7 @@
+gradio>=3.44
+huggingface_hub>=0.17
+
+# dev-deps
+ruff
+black
+mypy
