@@ -138,3 +138,7 @@ dmypy.json
 
 # Spell checker config
 cspell.json
+
+mock
+user_history
+_history_snapshots

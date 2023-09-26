@@ -7,26 +7,31 @@ import tempfile
 import gradio as gr
 from gradio_client import Client
 
+import user_history
+
 
 client = Client("runwayml/stable-diffusion-v1-5")
 
 
-def generate(prompt: str) -> tuple[str, list[str]]:
-    negative_prompt = ""
-    guidance_scale = 9.0
+def generate(prompt: str, profile: gr.OAuthProfile | None) -> tuple[str, list[str]]:
     out_dir = client.predict(prompt, fn_index=1)
 
-    config = {
+    metadata = {
         "prompt": prompt,
-        "negative_prompt": negative_prompt,
-        "guidance_scale": guidance_scale,
+        "negative_prompt": "",
+        "guidance_scale": 0.9,
     }
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as config_file:
-        json.dump(config, config_file)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as metadata_file:
+        json.dump(metadata, metadata_file)
 
     with (pathlib.Path(out_dir) / "captions.json").open() as f:
         paths = list(json.load(f).keys())
-    return paths
+
+    # Saving user history
+    for path in paths:
+        user_history.save_image(label=prompt, image=path, profile=profile, metadata=metadata)
+
+    return paths  # type: ignore
 
 
 with gr.Blocks(css="style.css") as demo:
@@ -39,15 +44,13 @@ with gr.Blocks(css="style.css") as demo:
             height="600px",
             object_fit="scale-down",
         )
+    prompt.submit(fn=generate, inputs=prompt, outputs=gallery)
 
-    prompt.submit(
-        fn=generate,
-        inputs=prompt,
-        outputs=gallery,
-    )
-
+with gr.Blocks() as demo_with_history:
+    with gr.Tab("App"):
+        demo.render()
     with gr.Tab("Past generations"):
-        gr.Markdown("building...")
+        user_history.render()
 
 if __name__ == "__main__":
-    demo.launch()
+    demo_with_history.queue().launch()
