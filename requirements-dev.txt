@@ -1,6 +1,4 @@
 gradio[oauth]>=3.44
-huggingface_hub>=0.17
-Pillow
 
 # dev-deps
 ruff
