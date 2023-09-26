@@ -31,8 +31,9 @@ def render() -> None:
 
     # Render user history tab
     gr.Markdown(
-        "## Your past generations\n\n(Log in to keep a gallery of your previous generations."
-        " Your history will be saved and available on your next visit.)"
+        "## Your past generations\n\nLog in to keep a gallery of your previous generations. Your history will be saved"
+        " and available on your next visit. Make sure to export your images from time to time as this gallery may be"
+        " deleted in the future."
     )
 
     if os.getenv("SYSTEM") == "spaces" and not os.path.exists("/data"):
@@ -70,7 +71,11 @@ def render() -> None:
         show_share_button=False,
         show_download_button=False,
     )
-    gr.Markdown("Make sure to save your images from time to time, this gallery may be deleted in the future.")
+    gr.Markdown(
+        "User history is powered by"
+        " [Wauplin/gradio-user-history](https://huggingface.co/spaces/Wauplin/gradio-user-history). Integrate it to"
+        " your own Space in just a few lines of code!"
+    )
     gallery.attach_load_event(_fetch_user_history, every=None)
 
     # Interactions
