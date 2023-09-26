@@ -26,7 +26,7 @@ def render() -> None:
 
     # initialize with default config
     if not user_history.initialized:
-        print("Initializing user history with default config. Use `user_history.setup(...)` to customize.")
+        print("Initializing user history with default config. Use `user_history.setup(...)` to customize folder_path.")
         setup()
 
     # Render user history tab
@@ -286,8 +286,6 @@ def _admin_section() -> None:
 
 def _display_if_admin() -> Callable:
     def _inner(profile: gr.OAuthProfile | None) -> str:
-        print(_admin_content())
-
         if profile is None:
             return ""
         if profile["preferred_username"] in _fetch_admins():
@@ -390,5 +388,5 @@ def _fetch_admins() -> List[str]:
     namespace = space_id.split("/")[0]
     response = requests.get(f"https://huggingface.co/api/organizations/{namespace}/members")
     if response.status_code == 200:
-        return sorted(member["user"] for member in response.json())
+        return sorted((member["user"] for member in response.json()), key=lambda x: x.lower())
     return [namespace]
