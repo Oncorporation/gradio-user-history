@@ -80,3 +80,7 @@ demo_with_history.queue().launch()
 - **README:** https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/README.md
 - **Source file:** https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/user_history.py
 - **Discussions:** https://huggingface.co/spaces/Wauplin/gradio-user-history/discussions
+
+## Preview
+
+![Image preview](https://huggingface.co/spaces/Wauplin/gradio-user-history/resolve/main/assets/screenshot.png)
