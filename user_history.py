@@ -1,3 +1,20 @@
+"""
+User History is a plugin that you can add to your Spaces to cache generated images for your users.
+
+Key features:
+- 🤗 Sign in with Hugging Face
+- Save generated images with their metadata: prompts, timestamp, hyper-parameters, etc.
+- Export your history as zip.
+- Delete your history to respect privacy.
+- Compatible with Persistent Storage for long-term storage.
+- Admin panel to check configuration and disk usage .
+
+Useful links:
+- Demo: https://huggingface.co/spaces/Wauplin/gradio-user-history
+- README: https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/README.md
+- Source file: https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/user_history.py
+- Discussions: https://huggingface.co/spaces/Wauplin/gradio-user-history/discussions
+"""
 import json
 import os
 import shutil
@@ -19,6 +36,9 @@ def setup(folder_path: str | Path | None = None) -> None:
     user_history = _UserHistory()
     user_history.folder_path = _resolve_folder_path(folder_path)
     user_history.initialized = True
+
+    # TODO: remove this section once all Spaces have migrated
+    _migrate_history()
 
 
 def render() -> None:
@@ -46,9 +66,18 @@ def render() -> None:
     with gr.Row():
         gr.LoginButton(min_width=250)
         gr.LogoutButton(min_width=250)
-        refresh_button = gr.Button("Refresh", icon="./assets/icon_refresh.png")
-        export_button = gr.Button("Export", icon="./assets/icon_download.png")
-        delete_button = gr.Button("Delete history", icon="./assets/icon_delete.png")
+        refresh_button = gr.Button(
+            "Refresh",
+            icon="https://huggingface.co/spaces/Wauplin/gradio-user-history/resolve/main/assets/icon_refresh.png",
+        )
+        export_button = gr.Button(
+            "Export",
+            icon="https://huggingface.co/spaces/Wauplin/gradio-user-history/resolve/main/assets/icon_download.png",
+        )
+        delete_button = gr.Button(
+            "Delete history",
+            icon="https://huggingface.co/spaces/Wauplin/gradio-user-history/resolve/main/assets/icon_delete.png",
+        )
 
     # "Export zip" row (hidden by default)
     with gr.Row():
@@ -395,3 +424,64 @@ def _fetch_admins() -> List[str]:
     if response.status_code == 200:
         return sorted((member["user"] for member in response.json()), key=lambda x: x.lower())
     return [namespace]
+
+
+################################################################
+# Legacy helpers to migrate image structure to new data format #
+################################################################
+# TODO: remove this section once all Spaces have migrated
+
+
+def _migrate_history():
+    """Script to migrate user history from v0 to v1."""
+    legacy_history_path = _legacy_get_history_folder_path()
+    if not legacy_history_path.exists():
+        return
+
+    error_count = 0
+    for json_path in legacy_history_path.glob("*.json"):
+        username = json_path.stem
+        print(f"Migrating history for user {username}...")
+        error_count += _legacy_move_user_history(username)
+        print("Done.")
+    print(f"Migration complete. {error_count} error(s) happened.")
+
+    if error_count == 0:
+        shutil.rmtree(legacy_history_path, ignore_errors=True)
+
+
+def _legacy_move_user_history(username: str) -> int:
+    history = _legacy_read_user_history(username)
+    error_count = 0
+    for image, prompt in reversed(history):
+        try:
+            save_image(label=prompt, image=image, profile={"preferred_username": username})
+        except Exception as e:
+            print("Issue while migrating image:", e)
+            error_count += 1
+    return error_count
+
+
+def _legacy_get_history_folder_path() -> Path:
+    _folder = os.environ.get("HISTORY_FOLDER")
+    if _folder is None:
+        _folder = Path(__file__).parent / "history"
+    return Path(_folder)
+
+
+def _legacy_read_user_history(username: str) -> List[Tuple[str, str]]:
+    """Return saved history for that user."""
+    with _legacy_user_lock(username):
+        path = _legacy_user_history_path(username)
+        if path.exists():
+            return json.loads(path.read_text())
+        return []  # No history yet
+
+
+def _legacy_user_history_path(username: str) -> Path:
+    return _legacy_get_history_folder_path() / f"{username}.json"
+
+
+def _legacy_user_lock(username: str) -> FileLock:
+    """Ensure history is not corrupted if concurrent calls."""
+    return FileLock(f"{_legacy_user_history_path(username)}.lock")
