@@ -48,12 +48,12 @@ with gr.Blocks(css="style.css") as demo:
     prompt.submit(fn=generate, inputs=prompt, outputs=gallery)
 
 with gr.Blocks() as demo_with_history:
+    with gr.Tab("README"):
+        gr.Markdown(Path("README.md").read_text().split("---")[-1])
     with gr.Tab("Demo"):
         demo.render()
     with gr.Tab("Past generations"):
         user_history.render()
-    with gr.Tab("README"):
-        gr.Markdown(Path("README.md").read_text().split("---")[-1])
 
 if __name__ == "__main__":
     demo_with_history.queue().launch()
