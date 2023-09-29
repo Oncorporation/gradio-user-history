@@ -352,7 +352,7 @@ def _get_nb_users() -> int:
     user_history = _UserHistory()
     if not user_history.initialized:
         return 0
-    if user_history.folder_path is not None:
+    if user_history.folder_path is not None and user_history.folder_path.exists():
         return len([path for path in user_history.folder_path.iterdir() if path.is_dir()])
     return 0
 
@@ -361,7 +361,7 @@ def _get_nb_images() -> int:
     user_history = _UserHistory()
     if not user_history.initialized:
         return 0
-    if user_history.folder_path is not None:
+    if user_history.folder_path is not None and user_history.folder_path.exists():
         return len([path for path in user_history.folder_path.glob("*/images/*")])
     return 0
 
