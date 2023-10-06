@@ -33,12 +33,10 @@ Integrate *Gradio User History* in just a few steps:
 
 ```yaml
 # README.md
----
 hf_oauth: true
----
 ```
 
-2. Add dependency in `requirements.txt`
+2. Add dependency to your `requirements.txt`
 
 ```bash
 # requirements.txt
