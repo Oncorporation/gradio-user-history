@@ -1,20 +1,3 @@
-"""
-User History is a plugin that you can add to your Spaces to cache generated images for your users.
-
-Key features:
-- 🤗 Sign in with Hugging Face
-- Save generated images with their metadata: prompts, timestamp, hyper-parameters, etc.
-- Export your history as zip.
-- Delete your history to respect privacy.
-- Compatible with Persistent Storage for long-term storage.
-- Admin panel to check configuration and disk usage .
-
-Useful links:
-- Demo: https://huggingface.co/spaces/Wauplin/gradio-user-history
-- README: https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/README.md
-- Source file: https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/user_history.py
-- Discussions: https://huggingface.co/spaces/Wauplin/gradio-user-history/discussions
-"""
 import json
 import os
 import shutil
@@ -89,7 +72,7 @@ def render() -> None:
     gallery = gr.Gallery(
         label="Past images",
         show_label=True,
-        elem_id="gallery",
+        elem_id="gradio_user_history_gallery",
         object_fit="contain",
         columns=5,
         height=600,
@@ -295,7 +278,7 @@ def _resolve_folder_path(folder_path: str | Path | None) -> Path:
         return Path("/data") / "_user_history"
 
     # Not in a Space or Persistent storage not enabled => local folder
-    return Path(__file__).parent / "_user_history"
+    return Path("_user_history").resolve()
 
 
 def _archives_path() -> Path:

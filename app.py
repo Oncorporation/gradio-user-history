@@ -1,14 +1,12 @@
 #!/usr/bin/env python
-
 import json
 import pathlib
 import tempfile
 from pathlib import Path
 
 import gradio as gr
+import gradio_user_history as gr_user_history
 from gradio_client import Client
-
-import user_history
 
 
 client = Client("runwayml/stable-diffusion-v1-5")
@@ -30,7 +28,7 @@ def generate(prompt: str, profile: gr.OAuthProfile | None) -> tuple[str, list[st
 
     # Saving user history
     for path in paths:
-        user_history.save_image(label=prompt, image=path, profile=profile, metadata=metadata)
+        gr_user_history.save_image(label=prompt, image=path, profile=profile, metadata=metadata)
 
     return paths  # type: ignore
 
@@ -53,7 +51,7 @@ with gr.Blocks() as demo_with_history:
     with gr.Tab("Demo"):
         demo.render()
     with gr.Tab("Past generations"):
-        user_history.render()
+        gr_user_history.render()
 
 if __name__ == "__main__":
     demo_with_history.queue().launch()
