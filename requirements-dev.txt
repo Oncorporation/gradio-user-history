@@ -1,6 +1,0 @@
-gradio[oauth]>=3.44
-
-# dev-deps
-ruff
-black
-mypy
