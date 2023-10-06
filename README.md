@@ -29,7 +29,9 @@ Want more? Please open an issue in the [Community Tab](https://huggingface.co/sp
 
 Integrate *Gradio User History* in just a few steps:
 
-**1. Enable OAuth**
+**1. Enable OAuth to your Space**
+
+Simply edit your Space metadata in your `README.md` file:
 
 
 ```yaml
@@ -38,7 +40,7 @@ hf_oauth: true
 ```
 
 
-**2. Add dependency to your `requirements.txt`**
+**2. Update your `requirements.txt`**
 
 
 ```bash
