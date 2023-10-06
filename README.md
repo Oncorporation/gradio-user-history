@@ -29,21 +29,26 @@ Want more? Please open an issue in the [Community Tab](https://huggingface.co/sp
 
 Integrate *Gradio User History* in just a few steps:
 
-1. Enable OAuth
+**1. Enable OAuth**
+
 
 ```yaml
 # README.md
 hf_oauth: true
 ```
 
-2. Add dependency to your `requirements.txt`
+
+**2. Add dependency to your `requirements.txt`**
+
 
 ```bash
 # requirements.txt
 git+https://huggingface.co/spaces/Wauplin/gradio-user-history
 ```
 
-3. Integrate into your Gradio app
+
+**3. Integrate into your Gradio app**
+
 
 ```py
 # app.py
@@ -64,12 +69,12 @@ def generate(prompt: str, profile: gr.OAuthProfile | None):
 with gr.Blocks() as demo:
     (...)
 
-    # or `with gr.Tab("Past generations"):`
     with gr.Accordion("Past generations", open=False):
         gr_user_history.render()
 ```
 
-4. (optional) Add Persistent Storage in your Space settings.
+
+**4. (optional) Add Persistent Storage in your Space settings.**
    Persistent Storage is suggested but not mandatory. If not enabled, the history is lost each time the Space restarts.
 
 And you're done!
