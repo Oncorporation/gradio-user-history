@@ -85,7 +85,7 @@ And you're done!
 
 - **Demo:** https://huggingface.co/spaces/Wauplin/gradio-user-history
 - **README:** https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/README.md
-- **Source file:** https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/user_history.py
+- **Source file:** https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/src/gradio_user_history/_user_history.py
 - **Questions and feedback:** https://huggingface.co/spaces/Wauplin/gradio-user-history/discussions
 
 ## Preview
