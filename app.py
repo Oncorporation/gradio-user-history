@@ -8,6 +8,12 @@ import gradio as gr
 import gradio_user_history as gr_user_history
 from gradio_client import Client
 
+from gradio_space_ci import enable_space_ci
+
+enable_space_ci()
+
+
+
 
 client = Client("runwayml/stable-diffusion-v1-5")
 

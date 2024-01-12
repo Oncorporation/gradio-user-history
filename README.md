@@ -1,13 +1,17 @@
 ---
 title: Gradio User History
-emoji: 🖼️
-colorFrom: gray
-colorTo: indigo
 sdk: gradio
 sdk_version: 3.44.4
 app_file: app.py
+emoji: 🖼️
+colorFrom: gray
+colorTo: indigo
 pinned: false
 hf_oauth: true
+space_ci:
+  trusted_authors: []
+  secrets: []
+  hardware: cpu-basic
 ---
 
 # Bring User History to your Spaces 🚀
