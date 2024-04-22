@@ -7,36 +7,50 @@ from pathlib import Path
 import gradio as gr
 import gradio_user_history as gr_user_history
 from gradio_client import Client
-
 from gradio_space_ci import enable_space_ci
+
 
 enable_space_ci()
 
 
 
 
-client = Client("runwayml/stable-diffusion-v1-5")
+client = Client("multimodalart/stable-cascade")
 
 
 def generate(prompt: str, profile: gr.OAuthProfile | None) -> tuple[str, list[str]]:
-    out_dir = client.predict(prompt, fn_index=1)
+    generated_img_path = client.predict(
+        prompt,	# str  in 'Prompt' Textbox component
+        "",	# str  in 'Negative prompt' Textbox component
+        0,	# float (numeric value between 0 and 2147483647) in 'Seed' Slider component
+        1024,	# float (numeric value between 1024 and 1536) in 'Width' Slider component
+        1024,	# float (numeric value between 1024 and 1536) in 'Height' Slider component
+        20,	# float (numeric value between 10 and 30) in 'Prior Inference Steps' Slider component
+        4,	# float (numeric value between 0 and 20) in 'Prior Guidance Scale' Slider component
+        10,	# float (numeric value between 4 and 12) in 'Decoder Inference Steps' Slider component
+        0,	# float (numeric value between 0 and 0) in 'Decoder Guidance Scale' Slider component
+        1,	# float (numeric value between 1 and 2) in 'Number of Images' Slider component
+        api_name="/run"
+    )
 
     metadata = {
         "prompt": prompt,
         "negative_prompt": "",
-        "guidance_scale": 0.9,
+        "prior_inference_steps": 20,
+        "prior_guidance_scale": 4,
+        "decoder_inference_steps": 10,
+        "decoder_guidance_scale": 0,
+        "seed": 0,
+        "width": 1024,
+        "height": 1024,
     }
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as metadata_file:
         json.dump(metadata, metadata_file)
 
-    with (pathlib.Path(out_dir) / "captions.json").open() as f:
-        paths = list(json.load(f).keys())
-
     # Saving user history
-    for path in paths:
-        gr_user_history.save_image(label=prompt, image=path, profile=profile, metadata=metadata)
+    gr_user_history.save_image(label=prompt, image=generated_img_path, profile=profile, metadata=metadata)
 
-    return paths  # type: ignore
+    return [generated_img_path]  # type: ignore
 
 
 with gr.Blocks(css="style.css") as demo:

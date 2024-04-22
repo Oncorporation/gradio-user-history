@@ -1,2 +1,2 @@
 git+https://huggingface.co/spaces/Wauplin/gradio-user-history
-gradio-space-ci @ git+https://huggingface.co/spaces/Wauplin/gradio-space-ci@0.2.1
+gradio-space-ci @ git+https://huggingface.co/spaces/Wauplin/gradio-space-ci@0.2.3
