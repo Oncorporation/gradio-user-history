@@ -18,13 +18,13 @@ enable_space_ci()
 client = Client("multimodalart/stable-cascade")
 
 
-def generate(prompt: str, profile: gr.OAuthProfile | None) -> tuple[str, list[str]]:
+def generate(prompt: str, negprompt: str, profile: gr.OAuthProfile | None) -> tuple[str, list[str]]:
     generated_img_path = client.predict(
         prompt,	# str  in 'Prompt' Textbox component
-        "",	# str  in 'Negative prompt' Textbox component
+        negprompt,	# str  in 'Negative prompt' Textbox component
         0,	# float (numeric value between 0 and 2147483647) in 'Seed' Slider component
-        1024,	# float (numeric value between 1024 and 1536) in 'Width' Slider component
-        1024,	# float (numeric value between 1024 and 1536) in 'Height' Slider component
+        1536,	# float (numeric value between 1024 and 1536) in 'Width' Slider component
+        1536,	# float (numeric value between 1024 and 1536) in 'Height' Slider component
         20,	# float (numeric value between 10 and 30) in 'Prior Inference Steps' Slider component
         4,	# float (numeric value between 0 and 20) in 'Prior Guidance Scale' Slider component
         10,	# float (numeric value between 4 and 12) in 'Decoder Inference Steps' Slider component
@@ -35,14 +35,14 @@ def generate(prompt: str, profile: gr.OAuthProfile | None) -> tuple[str, list[st
 
     metadata = {
         "prompt": prompt,
-        "negative_prompt": "",
+        "negative_prompt": negprompt,
         "prior_inference_steps": 20,
         "prior_guidance_scale": 4,
         "decoder_inference_steps": 10,
         "decoder_guidance_scale": 0,
         "seed": 0,
-        "width": 1024,
-        "height": 1024,
+        "width": 1536,
+        "height": 1536,
     }
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as metadata_file:
         json.dump(metadata, metadata_file)
@@ -56,6 +56,7 @@ def generate(prompt: str, profile: gr.OAuthProfile | None) -> tuple[str, list[st
 with gr.Blocks(css="style.css") as demo:
     with gr.Group():
         prompt = gr.Text(show_label=False, placeholder="Prompt")
+        negprompt = gr.Text(show_label=False, placeholder="Negative Prompt")
         gallery = gr.Gallery(
             show_label=False,
             columns=2,
@@ -63,7 +64,7 @@ with gr.Blocks(css="style.css") as demo:
             height="600px",
             object_fit="scale-down",
         )
-    prompt.submit(fn=generate, inputs=prompt, outputs=gallery)
+    prompt.submit(fn=generate, inputs=[prompt,negprompt], outputs=gallery)
 
 with gr.Blocks() as demo_with_history:
     with gr.Tab("README"):
