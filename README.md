@@ -21,7 +21,7 @@ space_ci:
 ## Key features:
 
 - 🤗 **Sign in with Hugging Face**
-- **Save** generated images with their metadata: prompts, timestamp, hyper-parameters, etc.
+- **Save** generated image, video, audio and document files with their metadata: prompts, timestamp, hyper-parameters, etc.
 - **Export** your history as zip.
 - **Delete** your history to respect privacy.
 - Compatible with **Persistent Storage** for long-term storage.

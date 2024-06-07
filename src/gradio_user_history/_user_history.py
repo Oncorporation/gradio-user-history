@@ -1,3 +1,4 @@
+
 import json
 import os
 import shutil
@@ -13,6 +14,7 @@ import numpy as np
 import requests
 from filelock import FileLock
 from PIL.Image import Image
+import filetype
 
 
 def setup(folder_path: str | Path | None = None) -> None:
@@ -143,6 +145,56 @@ def save_image(
     with user_history._user_lock(username):
         with user_history._user_jsonl_path(username).open("a") as f:
             f.write(json.dumps(data) + "\n")
+            
+def save_av(
+    profile: gr.OAuthProfile | None,
+    image: Image | np.ndarray | str | Path | None = None,
+    video: str | Path | None = None,
+    audio: str | Path | None = None,
+    document: str | Path | None = None,
+    label: str | None = None,
+    metadata: Dict | None = None,
+):
+    # Ignore files from logged out users
+    if profile is None:
+        return
+    username = profile["preferred_username"]
+
+    # Ignore files if user history not used
+    user_history = _UserHistory()
+    if not user_history.initialized:
+        warnings.warn(
+            "User history is not set in Gradio demo. Saving files is ignored. You must use `user_history.render(...)`"
+            " first."
+        )
+        return
+
+    # Copy image to storage
+    image_path = None
+    if image is not None:
+        image_path = _copy_image(image, dst_folder=user_history._user_images_path(username))
+
+    # Copy video to storage
+    if video is not None:    
+        video_path = _copy_file(video, dst_folder=user_history._user_file_path(username, "videos"))
+
+    # Copy audio to storage
+    if audio is not None:     
+        audio_path = _copy_file(audio, dst_folder=user_history._user_file_path(username, "audios"))
+    
+    # Copy document to storage
+    if document is not None:     
+        document_path = _copy_file(document, dst_folder=user_history._user_file_path(username, "documents"))
+
+    # Save new files + metadata
+    if metadata is None:
+        metadata = {}
+    if "datetime" not in metadata:
+        metadata["datetime"] = str(datetime.now())
+    data = {"image_path": str(image_path), "video_path": str(video_path), "audio_path": str(audio_path), "document_path": str(document_path), "label": label, "metadata": metadata}
+    with user_history._user_lock(username):
+        with user_history._user_jsonl_path(username).open("a") as f:
+            f.write(json.dumps(data) + "\n")
 
 
 #############
@@ -178,7 +230,13 @@ class _UserHistory(object):
         path = self._user_path(username) / "images"
         path.mkdir(parents=True, exist_ok=True)
         return path
-
+    
+    def _user_file_path(self, username: str, filetype: str = "images") -> Path:        
+        path = self._user_path(username) / filetype
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+   
+    
 
 def _fetch_user_history(profile: gr.OAuthProfile | None) -> List[Tuple[str, str]]:
     """Return saved history for that user, if it exists."""
@@ -262,11 +320,36 @@ def _copy_image(image: Image | np.ndarray | str | Path, dst_folder: Path) -> Pat
     if isinstance(image, np.ndarray):
         image = Image.fromarray(image)
     if isinstance(image, Image):
-        dst = dst_folder / f"{uuid4().hex}.png"
+        dst = dst_folder / f"Path(file).name}_{uuid4().hex}.png"
         image.save(dst)
         return dst
 
     raise ValueError(f"Unsupported image type: {type(image)}")
+
+def _copy_file(file: any | np.ndarray | str | Path, dst_folder: Path) -> Path:
+    """Copy file to the appropriate folder."""
+    # Already a path => copy it
+    if isinstance(file, str):
+        file = Path(file)
+    if isinstance(file, Path):
+        dst = dst_folder / f"{file.stem}_{uuid4().hex}{file.suffix}"  # keep file ext
+        shutil.copyfile(file, dst)
+        return dst
+
+    # Still a Python object => serialize it
+    if isinstance(file, np.ndarray):
+        file = Image.fromarray(file)
+        dst = dst_folder / f"{file.filename}_{uuid4().hex}{file.suffix}"
+        file.save(dst)
+        return dst
+
+    # try other file types
+    kind = filetype.guess(file)
+    if kind is not None:
+        dst = dst_folder / f"{Path(file).stem}_{uuid4().hex}.{kind.extension}"
+        shutil.copyfile(file, dst)
+        return dst
+    raise ValueError(f"Unsupported file type: {type(file)}")
 
 
 def _resolve_folder_path(folder_path: str | Path | None) -> Path:
