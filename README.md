@@ -7,6 +7,7 @@ emoji: 🖼️
 colorFrom: gray
 colorTo: indigo
 pinned: false
+fullWidth: true
 hf_oauth: true
 space_ci:
   trusted_authors: []
