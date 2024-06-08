@@ -41,8 +41,8 @@ def generate(prompt: str, negprompt: str, profile: gr.OAuthProfile | None) -> tu
         "decoder_inference_steps": 10,
         "decoder_guidance_scale": 0,
         "seed": 0,
-        "width": 1536,
-        "height": 1536,
+        "width": 1024,
+        "height": 1024,
     }
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as metadata_file:
         json.dump(metadata, metadata_file)
