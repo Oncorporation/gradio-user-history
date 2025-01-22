@@ -13,9 +13,7 @@ from gradio_space_ci import enable_space_ci
 enable_space_ci()
 
 
-
-
-client = Client("multimodalart/stable-cascade")
+client = Client("radames/stable-cascade-api")
 
 
 def generate(prompt: str, negprompt: str, profile: gr.OAuthProfile | None) -> tuple[str, list[str]]:
