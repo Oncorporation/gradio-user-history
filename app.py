@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 import gradio as gr
-import gradio_user_history as gr_user_history
+import src.gradio_user_history as gr_user_history
 from gradio_client import Client
 from gradio_space_ci import enable_space_ci
 
