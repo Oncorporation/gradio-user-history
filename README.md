@@ -99,4 +99,4 @@ And you're done!
 
 ## Preview
 
-![Image preview](https://huggingface.co/spaces/Wauplin/gradio-user-history/resolve/main/assets/screenshot.png)
+![Image preview](https://huggingface.co/spaces/Surn/gradio-user-history/resolve/main/assets/screenshot.png)
