@@ -6,20 +6,34 @@ import warnings
 from datetime import datetime
 from functools import cache
 from pathlib import Path
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple, Any
 from uuid import uuid4
 
 import gradio as gr
 import numpy as np
 import requests
 from filelock import FileLock
-from PIL.Image import Image
+from PIL import Image, PngImagePlugin
 import filetype
+import wave
+from mutagen.mp3 import MP3, EasyMP3
+import torchaudio
+import subprocess
+from modules.file_utils import get_file_parts, rename_file_to_lowercase_extension
+from tqdm import tqdm
 
+user_profile = gr.State(None)
 
-def setup(folder_path: str | Path | None = None) -> None:
+def get_profile() -> gr.OAuthProfile | None:
+    global user_profile
+    """Return the user profile if logged in, None otherwise."""
+
+    return user_profile
+
+def setup(folder_path: str | Path | None = None, display_type: str = "image_path") -> None:
     user_history = _UserHistory()
     user_history.folder_path = _resolve_folder_path(folder_path)
+    user_history.display_type = display_type
     user_history.initialized = True
 
 
@@ -47,17 +61,18 @@ def render() -> None:
 
     with gr.Row():
         gr.LoginButton(min_width=250)
+        #gr.LogoutButton(min_width=250)
         refresh_button = gr.Button(
             "Refresh",
-            icon="https://huggingface.co/spaces/Wauplin/gradio-user-history/resolve/main/assets/icon_refresh.png",
+            icon="./assets/icon_refresh.png",
         )
         export_button = gr.Button(
             "Export",
-            icon="https://huggingface.co/spaces/Wauplin/gradio-user-history/resolve/main/assets/icon_download.png",
+            icon="./assets/icon_download.png",
         )
         delete_button = gr.Button(
             "Delete history",
-            icon="https://huggingface.co/spaces/Wauplin/gradio-user-history/resolve/main/assets/icon_delete.png",
+            icon="./assets/icon_delete.png",
         )
 
     # "Export zip" row (hidden by default)
@@ -74,12 +89,12 @@ def render() -> None:
         label="Past images",
         show_label=True,
         elem_id="gradio_user_history_gallery",
-        object_fit="contain",
+        object_fit="cover",
         columns=5,
         height=600,
         preview=False,
-        show_share_button=False,
-        show_download_button=False,
+        show_share_button=True,
+        show_download_button=True,
     )
     gr.Markdown(
         "User history is powered by"
@@ -115,7 +130,7 @@ def render() -> None:
 
 def save_image(
     profile: gr.OAuthProfile | None,
-    image: Image | np.ndarray | str | Path,
+    image: Image.Image | np.ndarray | str | Path,
     label: str | None = None,
     metadata: Dict | None = None,
 ):
@@ -146,14 +161,15 @@ def save_image(
         with user_history._user_jsonl_path(username).open("a") as f:
             f.write(json.dumps(data) + "\n")
             
-def save_av(
+def save_file(
     profile: gr.OAuthProfile | None,
-    image: Image | np.ndarray | str | Path | None = None,
+    image: Image.Image | np.ndarray | str | Path | None = None,
     video: str | Path | None = None,
     audio: str | Path | None = None,
     document: str | Path | None = None,
     label: str | None = None,
     metadata: Dict | None = None,
+    progress= gr.Progress(track_tqdm=True)
 ):
     # Ignore files from logged out users
     if profile is None:
@@ -169,33 +185,117 @@ def save_av(
         )
         return
 
-    # Copy image to storage
-    image_path = None
-    if image is not None:
-        image_path = _copy_image(image, dst_folder=user_history._user_images_path(username))
-
-    # Copy video to storage
-    if video is not None:    
-        video_path = _copy_file(video, dst_folder=user_history._user_file_path(username, "videos"))
-
-    # Copy audio to storage
-    if audio is not None:     
-        audio_path = _copy_file(audio, dst_folder=user_history._user_file_path(username, "audios"))
-    
-    # Copy document to storage
-    if document is not None:     
-        document_path = _copy_file(document, dst_folder=user_history._user_file_path(username, "documents"))
+    uniqueId = uuid4().hex[:4]
 
     # Save new files + metadata
     if metadata is None:
         metadata = {}
     if "datetime" not in metadata:
         metadata["datetime"] = str(datetime.now())
-    data = {"image_path": str(image_path), "video_path": str(video_path), "audio_path": str(audio_path), "document_path": str(document_path), "label": label, "metadata": metadata}
-    with user_history._user_lock(username):
-        with user_history._user_jsonl_path(username).open("a") as f:
-            f.write(json.dumps(data) + "\n")
 
+    # Count operations to later update progress
+    operations = []
+    if audio is not None:
+        operations.append("audio")
+    if video is not None:
+        operations.append("video")
+    if image is not None:
+        operations.append("image")
+    if document is not None:
+        operations.append("document")
+    operations.append("jsonl")
+    operations.append("cleanup")
+
+    # Create a progress bar
+    with tqdm(total=len(operations), desc="Saving files to history..") as pb:
+        audio_path = None
+        # Copy audio to storage
+        if audio is not None:
+            audio_path1 = _copy_file(audio, dst_folder=user_history._user_file_path(username, "audios"), uniqueId=uniqueId)
+            audio_path = _add_metadata(audio_path1, metadata)
+            pb.update(1)
+
+        video_path = None
+        # Copy video to storage - need audio_path if available
+        if video is not None:
+            video_path1 = _copy_file(video, dst_folder=user_history._user_file_path(username, "videos"), uniqueId=uniqueId)
+            video_path = _add_metadata(video_path1, metadata, str(audio_path))
+            pb.update(1)
+
+        image_path = None
+        # Copy image to storage - need video_path if available
+        if image is not None:
+            image_path1 = _copy_image(image, dst_folder=user_history._user_images_path(username), uniqueId=uniqueId)
+            image_path = _add_metadata(image_path1, metadata)
+            pb.update(1)
+
+        document_path = None
+        # Copy document to storage
+        if document is not None:
+            document_path1 = _copy_file(document, dst_folder=user_history._user_file_path(username, "documents"), uniqueId=uniqueId)
+            document_path = _add_metadata(document_path1, metadata)
+            pb.update(1)
+
+        # Save Json file with combined data
+        data = {
+            "image_path": str(image_path),
+            "video_path": str(video_path),
+            "audio_path": str(audio_path),
+            "document_path": str(document_path),
+            "label": _UserHistory._sanitize_for_json(label),
+            "metadata": _UserHistory._sanitize_for_json(metadata)
+        }
+        with user_history._user_lock(username):
+            with user_history._user_jsonl_path(username).open("a") as f:
+                f.write(json.dumps(data) + "\n")
+        pb.update(1)
+
+        # Cleanup
+        if "audio" in operations and audio_path1 and audio_path1.exists():
+            try:
+                audio_path1.unlink()
+            except Exception as e:
+                print(f"An error occurred while deleting the audio history file: {e}")
+        if "video" in operations and video_path1 and video_path1.exists():
+            try:
+                video_path1.unlink()
+            except Exception as e:
+                print(f"An error occurred while deleting the video history file: {e}")
+        if "image" in operations and image_path1 and image_path1.exists():
+            try:
+                image_path1.unlink()
+            except Exception as e:
+                print(f"An error occurred while deleting the image history file: {e}")
+        if "document" in operations and document_path1 and document_path1.exists():
+            try:
+                document_path1.unlink()
+            except Exception as e:
+                print(f"An error occurred while deleting the document history file: {e}")
+        pb.update(1)
+
+    # If no files were saved, nothing to do
+    if image_path is None and video_path is None and audio_path is None and document_path is None:
+        return
+    # else:
+    #     # Return the paths of the saved files
+    #     return {
+    #         "image_path": image_path,
+    #         "video_path": video_path,
+    #         "audio_path": audio_path,
+    #         "document_path": document_path,
+    #         "label": label,
+    #         "metadata": metadata
+    #     }, json.dumps(data)
+    
+def get_filepath():
+    """Return the path to the user history folder."""
+    user_history = _UserHistory()
+    if not user_history.initialized:
+        warnings.warn("User history is not set in Gradio demo. You must use `user_history.render(...)` first.")
+        return None
+    return user_history.folder_path
+
+    
 
 #############
 # Internals #
@@ -206,6 +306,7 @@ class _UserHistory(object):
     _instance = None
     initialized: bool = False
     folder_path: Path
+    display_type: str = "video_path"
 
     def __new__(cls):
         # Using singleton pattern => we don't want to expose an object (more complex to use) but still want to keep
@@ -231,19 +332,39 @@ class _UserHistory(object):
         path.mkdir(parents=True, exist_ok=True)
         return path
     
-    def _user_file_path(self, username: str, filetype: str = "images") -> Path:        
+    def _user_file_path(self, username: str, filetype: str = "images") -> Path:
         path = self._user_path(username) / filetype
         path.mkdir(parents=True, exist_ok=True)
         return path
    
+    @staticmethod
+    def _sanitize_for_json(obj: Any) -> Any:
+        """
+        Recursively convert non-serializable objects into their string representation.
+        """
+        if isinstance(obj, dict):
+            return {str(key): _UserHistory._sanitize_for_json(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [_UserHistory._sanitize_for_json(item) for item in obj]
+        elif isinstance(obj, (str, int, float, bool)) or obj is None:
+            return obj
+        elif hasattr(obj, "isoformat"):
+            # For datetime objects and similar.
+            return obj.isoformat()
+        else:
+            return str(obj)
     
 
 def _fetch_user_history(profile: gr.OAuthProfile | None) -> List[Tuple[str, str]]:
     """Return saved history for that user, if it exists."""
     # Cannot load history for logged out users
+    global user_profile
     if profile is None:
+        user_profile = gr.State(None)
         return []
-    username = profile["preferred_username"]
+    username = str(profile["preferred_username"])
+    
+    user_profile = gr.State(profile)
 
     user_history = _UserHistory()
     if not user_history.initialized:
@@ -260,7 +381,7 @@ def _fetch_user_history(profile: gr.OAuthProfile | None) -> List[Tuple[str, str]
         images = []
         for line in jsonl_path.read_text().splitlines():
             data = json.loads(line)
-            images.append((data["path"], data["label"] or ""))
+            images.append((data[user_history.display_type], data["label"] or ""))
         return list(reversed(images))
 
 
@@ -306,52 +427,138 @@ def _delete_user_history(profile: gr.OAuthProfile | None) -> None:
 ####################
 
 
-def _copy_image(image: Image | np.ndarray | str | Path, dst_folder: Path) -> Path:
-    """Copy image to the images folder."""
-    # Already a path => copy it
-    if isinstance(image, str):
-        image = Path(image)
-    if isinstance(image, Path):
-        dst = dst_folder / f"{uuid4().hex}_{Path(image).name}"  # keep file ext
-        shutil.copyfile(image, dst)
-        return dst
+def _copy_image(image: Image.Image | np.ndarray | str | Path, dst_folder: Path, uniqueId: str = "") -> Path:
+    try:
+        """Copy image to the images folder."""
+        # Already a path => copy it
+        if isinstance(image, str):
+            image = Path(image)
+        if isinstance(image, Path):
+            dst = dst_folder / Path(f"{uniqueId}_{Path(image).name}")  # keep file ext
+            shutil.copyfile(image, dst)
+            return dst
 
-    # Still a Python object => serialize it
-    if isinstance(image, np.ndarray):
-        image = Image.fromarray(image)
-    if isinstance(image, Image):
-        dst = dst_folder / f"Path(file).name}_{uuid4().hex}.png"
-        image.save(dst)
-        return dst
+        # Still a Python object => serialize it
+        if isinstance(image, np.ndarray):
+            image = Image.Image.fromarray(image)
+        if isinstance(image, Image):
+            dst = dst_folder / Path(f"{Path(image).name}")
+            image.save(dst)
+            return dst
 
-    raise ValueError(f"Unsupported image type: {type(image)}")
+        raise ValueError(f"Unsupported image type: {type(image)}")
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        if not isinstance(dst, Path):
+            dst = Path(image)
+        return dst  # Return the original file_location if an error occurs
 
-def _copy_file(file: any | np.ndarray | str | Path, dst_folder: Path) -> Path:
-    """Copy file to the appropriate folder."""
-    # Already a path => copy it
-    if isinstance(file, str):
-        file = Path(file)
-    if isinstance(file, Path):
-        dst = dst_folder / f"{file.stem}_{uuid4().hex}{file.suffix}"  # keep file ext
-        shutil.copyfile(file, dst)
-        return dst
+def _copy_file(file: Any | np.ndarray | str | Path, dst_folder: Path, uniqueId: str = "") -> Path:
+    try:
+        """Copy file to the appropriate folder."""
+        # Already a path => copy it
+        if isinstance(file, str):
+            file = Path(file)
+        if isinstance(file, Path):
+            dst = dst_folder / Path(f"{file.stem}_{uniqueId}{file.suffix}")  # keep file ext
+            shutil.copyfile(file, dst)
+            return dst
 
-    # Still a Python object => serialize it
-    if isinstance(file, np.ndarray):
-        file = Image.fromarray(file)
-        dst = dst_folder / f"{file.filename}_{uuid4().hex}{file.suffix}"
-        file.save(dst)
-        return dst
+        # Still a Python object => serialize it
+        if isinstance(file, np.ndarray):
+            file = Image.fromarray(file)
+            dst = dst_folder / Path(f"{file.stem}_{uniqueId}{file.suffix}")
+            file.save(dst)
+            return dst
 
-    # try other file types
-    kind = filetype.guess(file)
-    if kind is not None:
-        dst = dst_folder / f"{Path(file).stem}_{uuid4().hex}.{kind.extension}"
-        shutil.copyfile(file, dst)
-        return dst
-    raise ValueError(f"Unsupported file type: {type(file)}")
+        # try other file types
+        kind = filetype.guess(file)
+        if kind is not None:
+            dst = dst_folder / Path(f"{Path(file).stem}_{uniqueId}.{kind.extension}")
+            shutil.copyfile(file, dst)
+            return dst
+        raise ValueError(f"Unsupported file type: {type(file)}")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        if not isinstance(dst, Path):
+            dst = Path(file)
+        return dst  # Return the original file_location if an error occurs
 
 
+def _add_metadata(file_location: Path, metadata: Dict[str, Any], support_path: str = None) -> Path:
+    try:
+        file_type = file_location.suffix
+        valid_file_types = [".wav", ".mp3", ".mp4", ".png"]
+        if file_type not in valid_file_types:
+            raise ValueError("Invalid file type. Valid file types are .wav, .mp3, .mp4, .png")
+
+        directory, filename, name, ext, new_ext = get_file_parts(file_location)
+        new_file_location = rename_file_to_lowercase_extension(os.path.join(directory, name +"_h"+ new_ext))
+
+        if file_type == ".wav":
+            # Open and process .wav file
+            with wave.open(str(file_location), 'rb') as wav_file:
+                # Get the current metadata
+                current_metadata = {key: value for key, value in wav_file.getparams()._asdict().items() if isinstance(value, (int, float))}
+                
+                # Update metadata
+                current_metadata.update(metadata)
+
+            # Copy the WAV file
+                with wave.open(new_file_location, 'wb') as wav_output_file:
+                    wav_output_file.setparams(wav_file.getparams())
+                    wav_output_file.writeframes(wav_file.readframes(wav_file.getnframes()))
+            return new_file_location
+        elif file_type == ".mp3":
+            # Open and process .mp3 file
+            audio = EasyMP3(file_location)
+
+            # Add metadata to the file
+            for key, value in metadata.items():
+                audio[key] = value
+
+            # Save the MP3 file to the new file location
+            audio.save(new_file_location)
+            return new_file_location
+        elif file_type == ".mp4":
+            # Open and process .mp4 file
+            # Add metadata to the file
+            wav_file_location = Path(support_path) if support_path is not None else file_location.with_suffix(".wav")
+            wave_exists = wav_file_location.exists()
+            if not wave_exists:
+                # Use torchaudio to create the WAV file if it doesn't exist
+                audio, sample_rate = torchaudio.load(str(file_location), normalize=True)
+                torchaudio.save(wav_file_location, audio, sample_rate, format='wav')
+
+            # Use ffmpeg to add metadata to the video file
+            metadata_args = [f"{key}={value}" for key, value in metadata.items()]
+            ffmpeg_metadata = ":".join(metadata_args)
+            ffmpeg_cmd = f'ffmpeg -y -i "{str(file_location)}" -i "{str(wav_file_location)}" -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -metadata "{ffmpeg_metadata}" "{new_file_location}"'
+            subprocess.run(ffmpeg_cmd, shell=True, check=True)
+
+            # Remove temporary WAV file
+            if not wave_exists:
+                wav_file_location.unlink()
+            return new_file_location
+        elif file_type == ".png":
+            image = Image.open(str(file_location))
+            # Create a PngInfo object for custom metadata
+            pnginfo = PngImagePlugin.PngInfo()
+            
+            for key, value in metadata.items():
+                pnginfo.add_text(str(key), str(value))
+            
+            image.save(str(new_file_location), pnginfo=pnginfo)
+            return new_file_location
+
+        return file_location  # Return the path to the modified file
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return file_location  # Return the original file_location if an error occurs
+   
 def _resolve_folder_path(folder_path: str | Path | None) -> Path:
     if folder_path is not None:
         return Path(folder_path).expanduser().resolve()
@@ -399,7 +606,9 @@ Running on **{os.getenv("SYSTEM", "local")}** (id: {os.getenv("SPACE_ID")}). {_g
 
 Admins: {', '.join(_fetch_admins())}
 
-{_get_nb_users()} user(s), {_get_nb_images()} image(s)
+{_get_nb_users()} user(s), {_get_nb_images()} image(s), {_get_nb_video()} video(s) in history.
+
+Display Type: *{_UserHistory().display_type}*
 
 ### Configuration
 
@@ -428,6 +637,14 @@ def _get_nb_images() -> int:
         return 0
     if user_history.folder_path is not None and user_history.folder_path.exists():
         return len([path for path in user_history.folder_path.glob("*/images/*")])
+    return 0
+
+def _get_nb_video() -> int:
+    user_history = _UserHistory()
+    if not user_history.initialized:
+        return 0
+    if user_history.folder_path is not None and user_history.folder_path.exists():
+        return len([path for path in user_history.folder_path.glob("*/videos/*")])
     return 0
 
 

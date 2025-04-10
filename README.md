@@ -1,7 +1,7 @@
 ---
 title: Gradio User History
 sdk: gradio
-sdk_version: 4.27.0
+sdk_version: 5.24.0
 app_file: app.py
 emoji: 🖼️
 colorFrom: gray
@@ -27,6 +27,9 @@ space_ci:
 - **Delete** your history to respect privacy.
 - Compatible with **Persistent Storage** for long-term storage.
 - **Admin** panel to check configuration and disk usage .
+- **Progress bar** to show status of saving files
+- Choose between images or video **Gallery**
+- Compatible with **Gradio 4.0+** and **Gradio 5.0+**
 
 Want more? Please open an issue in the [Community Tab](https://huggingface.co/spaces/Wauplin/gradio-user-history/discussions)! This is meant to be a community-driven implementation, enhanced by user feedback and contributions!
 
@@ -92,6 +95,7 @@ And you're done!
 - **README:** https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/README.md
 - **Source file:** https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/src/gradio_user_history/_user_history.py
 - **Questions and feedback:** https://huggingface.co/spaces/Wauplin/gradio-user-history/discussions
+- **Development Updates**: https://huggingface.co/spaces/Surn/gradio-user-history/
 
 ## Preview
 
