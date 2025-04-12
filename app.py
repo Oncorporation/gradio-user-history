@@ -51,7 +51,7 @@ def generate(prompt: str, negprompt: str, profile: gr.OAuthProfile | None) -> tu
     return [generated_img_path]  # type: ignore
 
 
-with gr.Blocks(css="style.css") as demo:
+with gr.Blocks(css="style.css", theme='Surn/beeuty@==0.5.12') as demo:
     with gr.Group():
         prompt = gr.Text(show_label=False, placeholder="Prompt")
         negprompt = gr.Text(show_label=False, placeholder="Negative Prompt")
@@ -66,11 +66,11 @@ with gr.Blocks(css="style.css") as demo:
 
 with gr.Blocks() as demo_with_history:
     with gr.Tab("README"):
-        gr.Markdown(Path("README.md").read_text().split("---")[-1])
+        gr.Markdown(Path("README.md").read_text(encoding="utf-8").split("---")[-1])
     with gr.Tab("Demo"):
         demo.render()
     with gr.Tab("Past generations"):
         gr_user_history.render()
 
 if __name__ == "__main__":
-    demo_with_history.queue().launch()
+    demo_with_history.queue().launch(allowed_paths=["data/_user_history"])
