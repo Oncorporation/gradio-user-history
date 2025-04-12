@@ -1,7 +1,7 @@
 ---
 title: Gradio User History
 sdk: gradio
-sdk_version: 5.24.0
+sdk_version: 5.23.2
 app_file: app.py
 emoji: 🖼️
 colorFrom: gray
@@ -10,8 +10,11 @@ pinned: false
 fullWidth: true
 hf_oauth: true
 space_ci:
-  trusted_authors: []
-  secrets: []
+  trusted_authors: 
+  private: auto
+  secrets: 
+    - SPACE_CI_SECRET
+    - HF_TOKEN
   hardware: cpu-basic
 ---
 
@@ -54,6 +57,12 @@ hf_oauth: true
 ```bash
 # requirements.txt
 git+https://huggingface.co/spaces/Wauplin/gradio-user-history
+filetype @ git+https://github.com/h2non/filetype.py.git
+gradio[oauth]
+mutagen
+tqdm
+torch==2.6.0 --extra-index-url https://download.pytorch.org/whl/cu124
+torchaudio>=2.0.0,<2.6.2 --extra-index-url https://download.pytorch.org/whl/cu124
 ```
 
 
