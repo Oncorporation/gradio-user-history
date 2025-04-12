@@ -1,8 +1,9 @@
 #git+https://huggingface.co/spaces/Wauplin/gradio-user-history
-gradio-space-ci @ git+https://huggingface.co/spaces/Wauplin/gradio-space-ci@0.2.3
+#gradio-space-ci @ git+https://huggingface.co/spaces/Wauplin/gradio-space-ci@0.2.3
 filetype @ git+https://github.com/h2non/filetype.py.git
+gradio-client
 gradio[oauth]
 mutagen
+tqdm
 torch==2.6.0 --extra-index-url https://download.pytorch.org/whl/cu124
 torchaudio>=2.0.0,<2.6.2 --extra-index-url https://download.pytorch.org/whl/cu124
-tqdm
