@@ -6,6 +6,8 @@ from pathlib import Path
 
 import gradio as gr
 import src.gradio_user_history as gr_user_history
+from modules.version_info import versions_html
+
 from gradio_client import Client
 #from gradio_space_ci import enable_space_ci
 
@@ -64,19 +66,23 @@ with gr.Blocks(css="style.css") as demo:
         )
     prompt.submit(fn=generate, inputs=[prompt,negprompt], outputs=gallery)
 
-with gr.Blocks() as demo_with_history:
+with gr.Blocks(theme='Surn/beeuty@==0.5.24') as demo_with_history:
     with gr.Tab("README"):
         gr.Markdown(Path("README.md").read_text(encoding="utf-8").split("---")[-1])
     with gr.Tab("Demo"):
         demo.render()
     with gr.Tab("Past generations"):
+        gr_user_history.setup(display_type="image_path") # optional, this is where you would set the display type = "video_path" if you want to display videos
         gr_user_history.render()
+    with gr.Row("Versions") as versions_row:
+        gr.HTML(value=versions_html(), visible=True, elem_id="versions")
+
 
 if __name__ == "__main__":
     launch_args = {}
     launch_kwargs = {}
     launch_kwargs['allowed_paths'] = ["assets/", "data/_user_history", "/data/_user_history/Surn"]
-    launch_kwargs['favicon_path'] = "./assets/favicon.ico"
+    launch_kwargs['favicon_path'] = "assets/favicon.ico"
     #launch_kwargs['inbrowser'] = True
 
     demo_with_history.queue().launch(**launch_kwargs)
