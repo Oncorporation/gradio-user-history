@@ -56,7 +56,7 @@ hf_oauth: true
 
 ```bash
 # requirements.txt
-git+https://huggingface.co/spaces/Wauplin/gradio-user-history
+git+https://huggingface.co/spaces/Surn/gradio-user-history
 filetype @ git+https://github.com/h2non/filetype.py.git
 gradio[oauth]
 mutagen
@@ -81,17 +81,20 @@ def generate(prompt: str, profile: gr.OAuthProfile | None):
 
     # => Save generated image(s)
     gr_user_history.save_image(label=prompt, image=image, profile=profile)
-    return image
+
+    # => Save generated image, video, audio, document, metadata
+    gr_user_history.save_file(profile=profile,image=image, video=video, audio=audio, document=document,label=string, metadata=metadata)
 
 
 # => Render user history
 with gr.Blocks() as demo:
     (...)
 
-    with gr.Accordion("Past generations", open=False):
+    with gr.Accordion("Past generations", open=False):        
+        # => OPTIONALLY display images or videos in the history gallery with display_type: "image_path" or "video_path"
+        gr_user_history.setup(display_type="image_path") 
         gr_user_history.render()
 ```
-
 
 **4. (optional) Add Persistent Storage in your Space settings.**
    Persistent Storage is suggested but not mandatory. If not enabled, the history is lost each time the Space restarts.
