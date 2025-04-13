@@ -19,7 +19,6 @@ import wave
 from mutagen.mp3 import MP3, EasyMP3
 import torchaudio
 import subprocess
-from modules.file_utils import get_file_parts, rename_file_to_lowercase_extension
 from tqdm import tqdm
 
 user_profile = gr.State(None)
@@ -494,8 +493,8 @@ def _add_metadata(file_location: Path, metadata: Dict[str, Any], support_path: s
         if file_type not in valid_file_types:
             raise ValueError("Invalid file type. Valid file types are .wav, .mp3, .mp4, .png")
 
-        directory, filename, name, ext, new_ext = get_file_parts(file_location)
-        new_file_location = rename_file_to_lowercase_extension(os.path.join(directory, name +"_h"+ new_ext))
+        directory, filename, name, ext, new_ext = _get_file_parts(file_location)
+        new_file_location = _rename_file_to_lowercase_extension(os.path.join(directory, name +"_h"+ new_ext))
 
         if file_type == ".wav":
             # Open and process .wav file
@@ -576,6 +575,55 @@ def _archives_path() -> Path:
     path.mkdir(parents=True, exist_ok=True)
     return path
 
+def _get_file_parts(file_path: str):
+    # Split the path into directory and filename
+    directory, filename = os.path.split(file_path)
+    
+    # Split the filename into name and extension
+    name, ext = os.path.splitext(filename)
+    
+    # Convert the extension to lowercase
+    new_ext = ext.lower()
+    return directory, filename, name, ext, new_ext
+
+def _rename_file_to_lowercase_extension(file_path: str) -> str:
+    """
+    Renames a file's extension to lowercase in place.
+
+    Parameters:
+        file_path (str): The original file path.
+
+    Returns:
+        str: The new file path with the lowercase extension.
+
+    Raises:
+        OSError: If there is an error renaming the file (e.g., file not found, permissions issue).
+    """
+    directory, filename, name, ext, new_ext = _get_file_parts(file_path)
+    # If the extension changes, rename the file
+    if ext != new_ext:
+        new_filename = name + new_ext
+        new_file_path = os.path.join(directory, new_filename)
+        try:
+            os.rename(file_path, new_file_path)
+            print(f"Rename {file_path} to {new_file_path}\n")
+        except Exception as e:
+            print(f"os.rename failed: {e}. Falling back to binary copy operation.")
+            try:
+                # Read the file in binary mode and write it to new_file_path
+                with open(file_path, 'rb') as f:
+                    data = f.read()
+                with open(new_file_path, 'wb') as f:
+                    f.write(data)
+                    print(f"Copied {file_path} to {new_file_path}\n")
+                # Optionally, remove the original file after copying
+                #os.remove(file_path)
+            except Exception as inner_e:
+                print(f"Failed to copy file from {file_path} to {new_file_path}: {inner_e}")
+                raise inner_e
+        return new_file_path
+    else:
+        return file_path
 
 #################
 # Admin section #
