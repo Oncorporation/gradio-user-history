@@ -1,7 +1,7 @@
 ---
 title: Gradio User History
 sdk: gradio
-sdk_version: 5.23.2
+sdk_version: 5.25.0
 app_file: app.py
 emoji: 🖼️
 colorFrom: gray
