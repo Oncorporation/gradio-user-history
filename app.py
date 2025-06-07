@@ -3,6 +3,7 @@ import json
 import pathlib
 import tempfile
 from pathlib import Path
+import numpy as np 
 
 import gradio as gr
 import src.gradio_user_history as gr_user_history
@@ -21,12 +22,12 @@ client = Client("multimodalart/stable-diffusion-3.5-large-turboX")
 def generate(prompt: str, negprompt: str, seed: int, randomize_seed: bool, profile: gr.OAuthProfile | None) -> list[str | None]:
     # API call to the new endpoint
     # The result is a tuple, where the first element is a dictionary containing image information
-    # and the second element is the seed.
-    actual_seed = seed
+    # and the second element is the seed.    
+    
     if randomize_seed:
-        # The API documentation implies that if randomize_seed is True, the provided seed value might be overridden.
-        # The API returns the actual seed used.
-        pass # No need to generate a random seed here if the API handles it.
+        actual_seed = np.random.randint(0, 2147483647 + 1) # Use 2147483647 as MAX_SEED, +1 because randint is exclusive for the upper bound
+    else:
+        actual_seed = seed
 
     result = client.predict(
         prompt=prompt,  # str  in 'Prompt' Textbox component
