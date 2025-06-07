@@ -53,6 +53,7 @@ def generate(prompt: str, negprompt: str, seed: int, randomize_seed: bool, profi
         "height": 1024,
         "guidance_scale": 1.5,
         "num_inference_steps": 8,
+        "timestamp": str(datetime.datetime.now()),
     }
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as metadata_file:
         json.dump(metadata, metadata_file)
