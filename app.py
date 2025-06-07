@@ -15,48 +15,63 @@ from gradio_client import Client
 #enable_space_ci()
 
 
-client = Client("multimodalart/stable-cascade")
+client = Client("multimodalart/stable-diffusion-3.5-large-turboX")
 
 
-def generate(prompt: str, negprompt: str, profile: gr.OAuthProfile | None) -> tuple[str, list[str]]:
-    generated_img_path = client.predict(
-        prompt,	# str  in 'Prompt' Textbox component
-        negprompt,	# str  in 'Negative prompt' Textbox component
-        0,	# float (numeric value between 0 and 2147483647) in 'Seed' Slider component
-        1536,	# float (numeric value between 1024 and 1536) in 'Width' Slider component
-        1536,	# float (numeric value between 1024 and 1536) in 'Height' Slider component
-        20,	# float (numeric value between 10 and 30) in 'Prior Inference Steps' Slider component
-        4,	# float (numeric value between 0 and 20) in 'Prior Guidance Scale' Slider component
-        10,	# float (numeric value between 4 and 12) in 'Decoder Inference Steps' Slider component
-        0,	# float (numeric value between 0 and 0) in 'Decoder Guidance Scale' Slider component
-        1,	# float (numeric value between 1 and 2) in 'Number of Images' Slider component
-        api_name="/run"
+def generate(prompt: str, negprompt: str, seed: int, randomize_seed: bool, profile: gr.OAuthProfile | None) -> list[str | None]:
+    # API call to the new endpoint
+    # The result is a tuple, where the first element is a dictionary containing image information
+    # and the second element is the seed.
+    actual_seed = seed
+    if randomize_seed:
+        # The API documentation implies that if randomize_seed is True, the provided seed value might be overridden.
+        # The API returns the actual seed used.
+        pass # No need to generate a random seed here if the API handles it.
+
+    result = client.predict(
+        prompt=prompt,  # str  in 'Prompt' Textbox component
+        negative_prompt=negprompt,  # str  in 'Negative prompt' Textbox component
+        seed=actual_seed,  # float (numeric value between 0 and 2147483647) in 'Seed' Slider component
+        randomize_seed=randomize_seed,  # bool in 'Randomize seed' Checkbox component
+        width=1024,  # float (numeric value between 1024 and 1536) in 'Width' Slider component
+        height=1024,  # float (numeric value between 1024 and 1536) in 'Height' Slider component
+        guidance_scale=1.5,  # float (numeric value between 0 and 20) in 'Guidance scale' Slider component
+        num_inference_steps=8,  # float (numeric value between 4 and 12) in 'Number of inference steps' Slider component
+        api_name="/infer"
     )
+
+    generated_img_path: str | None = result[0] # Extracting the image path safely
+    returned_seed = result[1] # Extracting the seed from the result
 
     metadata = {
         "prompt": prompt,
         "negative_prompt": negprompt,
-        "prior_inference_steps": 20,
-        "prior_guidance_scale": 4,
-        "decoder_inference_steps": 10,
-        "decoder_guidance_scale": 0,
-        "seed": 0,
+        "seed": returned_seed, # Using the seed returned by the API
+        "randomize_seed": randomize_seed,
         "width": 1024,
         "height": 1024,
+        "guidance_scale": 1.5,
+        "num_inference_steps": 8,
     }
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as metadata_file:
         json.dump(metadata, metadata_file)
 
     # Saving user history
-    gr_user_history.save_image(label=prompt, image=generated_img_path, profile=profile, metadata=metadata)
+    # Ensure generated_img_path is not None if save_image expects a valid path
+    if generated_img_path:
+        gr_user_history.save_image(label=prompt, image=generated_img_path, profile=profile, metadata=metadata)
 
-    return [generated_img_path]  # type: ignore
+    return [generated_img_path]
 
 
 with gr.Blocks(css="style.css") as demo:
     with gr.Group():
         prompt = gr.Text(show_label=False, placeholder="Prompt")
         negprompt = gr.Text(show_label=False, placeholder="Negative Prompt")
+        # Add Seed Slider and Randomize Seed Checkbox
+        with gr.Row():
+            seed_slider = gr.Slider(minimum=0, maximum=2147483647, step=1, label="Seed", value=0, scale=4)
+            randomize_checkbox = gr.Checkbox(label="Randomize seed", value=True, scale=1)
         gallery = gr.Gallery(
             show_label=False,
             columns=2,
@@ -64,7 +79,10 @@ with gr.Blocks(css="style.css") as demo:
             height="600px",
             object_fit="scale-down",
         )
-    prompt.submit(fn=generate, inputs=[prompt,negprompt], outputs=gallery)
+        submit_button = gr.Button("Generate")
+
+    submit_button.click(fn=generate, inputs=[prompt, negprompt, seed_slider, randomize_checkbox], outputs=gallery)
+    prompt.submit(fn=generate, inputs=[prompt, negprompt, seed_slider, randomize_checkbox], outputs=gallery)
 
 with gr.Blocks(theme='Surn/beeuty@==0.5.25') as demo_with_history:
     with gr.Tab("README"):
