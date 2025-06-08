@@ -103,6 +103,7 @@ if __name__ == "__main__":
     launch_kwargs = {}
     launch_kwargs['allowed_paths'] = ["assets/", "data/_user_history", "/data/_user_history/Surn"]
     launch_kwargs['favicon_path'] = "assets/favicon.ico"
+    launch_kwargs['mcp_server'] = True  # Enable MCP server
     #launch_kwargs['inbrowser'] = True
 
     demo_with_history.queue().launch(**launch_kwargs)
