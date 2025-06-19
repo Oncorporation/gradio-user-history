@@ -20,6 +20,9 @@ from mutagen.mp3 import MP3, EasyMP3
 import torchaudio
 import subprocess
 from tqdm import tqdm
+from io import BytesIO
+from urllib.parse import urlparse
+import requests
 
 user_profile = gr.State(None)
 
@@ -145,7 +148,7 @@ def save_image(
     # Ignore images from logged out users
     if profile is None:
         return
-    username = profile["preferred_username"]
+    username = profile if isinstance(profile, str) else profile["preferred_username"]
 
     # Ignore images if user history not used
     user_history = _UserHistory()
@@ -182,7 +185,7 @@ def save_file(
     # Ignore files from logged out users
     if profile is None:
         return
-    username = profile["preferred_username"]
+    username = profile if isinstance(profile, str) else profile["preferred_username"]
 
     # Ignore files if user history not used
     user_history = _UserHistory()
@@ -378,7 +381,7 @@ def _fetch_user_history(profile: gr.OAuthProfile | None) -> List[Tuple[str, str]
     if profile is None:
         user_profile = gr.State(None)
         return []
-    username = str(profile["preferred_username"])
+    username = profile if isinstance(profile, str) else str(profile["preferred_username"])
     
     user_profile = gr.State(profile)
 
@@ -414,7 +417,7 @@ def _export_user_history(profile: gr.OAuthProfile | None) -> Dict | None:
     # Cannot load history for logged out users
     if profile is None:
         return None
-    username = profile["preferred_username"]
+    username = profile if isinstance(profile, str) else profile["preferred_username"]
 
     user_history = _UserHistory()
     if not user_history.initialized:
@@ -443,7 +446,7 @@ def _delete_user_history(profile: gr.OAuthProfile | None) -> None:
     # Cannot load history for logged out users
     if profile is None:
         return
-    username = profile["preferred_username"]
+    username = profile if isinstance(profile, str) else profile["preferred_username"]
 
     user_history = _UserHistory()
     if not user_history.initialized:
@@ -462,9 +465,14 @@ def _delete_user_history(profile: gr.OAuthProfile | None) -> None:
 def _copy_image(image: Image.Image | np.ndarray | str | Path, dst_folder: Path, uniqueId: str = "") -> Path:
     try:
         """Copy image to the images folder."""
-        # Already a path => copy it
+        # If image is a string, check if it's a URL.
         if isinstance(image, str):
-            image = Path(image)
+            if image.startswith("http://") or image.startswith("https://"):
+                return download_and_save_image(image, dst_folder)
+            else:
+                # Assume it's a local filepath string.
+                image = Path(image)
+
         if isinstance(image, Path):
             dst = dst_folder / Path(f"{uniqueId}_{Path(image).name}")  # keep file ext
             shutil.copyfile(image, dst)
@@ -658,6 +666,54 @@ def _rename_file_to_lowercase_extension(file_path: str) -> str:
     else:
         return file_path
 
+def _get_unique_file_path(directory, filename, file_ext, counter=0):
+    """
+    Recursively increments the filename until a unique path is found.
+    
+    Parameters:
+        directory (str): The directory for the file.
+        filename (str): The base filename.
+        file_ext (str): The file extension including the leading dot.
+        counter (int): The current counter value to append.
+        
+    Returns:
+        str: A unique file path that does not exist.
+    """
+    if counter == 0:
+        filepath = os.path.join(directory, f"{filename}{file_ext}")
+    else:
+        filepath = os.path.join(directory, f"{filename}{counter}{file_ext}")
+
+    if not os.path.exists(filepath):
+        return filepath
+    else:
+        return _get_unique_file_path(directory, filename, file_ext, counter + 1)
+
+def _download_and_save_image(url: str, dst_folder: Path) -> Path:
+    """
+    Downloads an image from a URL, verifies it with PIL, and saves it in dst_folder with a unique filename.
+    
+    Args:
+        url (str): The image URL.
+        dst_folder (Path): The destination folder for the image.
+        
+    Returns:
+        Path: The saved image's file path.
+    """
+    response = requests.get(url)
+    response.raise_for_status()
+    pil_image = Image.open(BytesIO(response.content))
+    
+    parsed_url = urlparse(url)
+    original_filename = os.path.basename(parsed_url.path)  # e.g., "background.png"
+    base, ext = os.path.splitext(original_filename)
+    
+    # Use get_unique_file_path from file_utils.py to generate a unique file path.
+    unique_filepath_str = _get_unique_file_path(str(dst_folder), base, ext)
+    dst = Path(unique_filepath_str)
+    pil_image.save(dst)
+    return dst
+
 #################
 # Admin section #
 #################
@@ -673,6 +729,8 @@ def _display_if_admin() -> Callable:
         if profile is None:
             return ""
         if profile["preferred_username"] in _fetch_admins():
+            return _admin_content()
+        if profile in _fetch_admins():
             return _admin_content()
         return ""
 
