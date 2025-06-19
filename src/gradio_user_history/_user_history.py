@@ -468,7 +468,7 @@ def _copy_image(image: Image.Image | np.ndarray | str | Path, dst_folder: Path, 
         # If image is a string, check if it's a URL.
         if isinstance(image, str):
             if image.startswith("http://") or image.startswith("https://"):
-                return download_and_save_image(image, dst_folder)
+                return _download_and_save_image(image, dst_folder)
             else:
                 # Assume it's a local filepath string.
                 image = Path(image)
