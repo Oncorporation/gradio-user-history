@@ -22,7 +22,6 @@ import subprocess
 from tqdm import tqdm
 from io import BytesIO
 from urllib.parse import urlparse
-import requests
 
 user_profile = gr.State(None)
 
@@ -464,6 +463,7 @@ def _delete_user_history(profile: gr.OAuthProfile | None) -> None:
 
 def _copy_image(image: Image.Image | np.ndarray | str | Path, dst_folder: Path, uniqueId: str = "") -> Path:
     try:
+        dst = dst_folder
         """Copy image to the images folder."""
         # If image is a string, check if it's a URL.
         if isinstance(image, str):
