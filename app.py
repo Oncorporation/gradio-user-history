@@ -3,7 +3,8 @@ import json
 import pathlib
 import tempfile
 from pathlib import Path
-import numpy as np 
+import numpy as np
+import datetime
 
 import gradio as gr
 import src.gradio_user_history as gr_user_history
@@ -16,7 +17,7 @@ from gradio_client import Client
 #enable_space_ci()
 
 
-client = Client("multimodalart/FLUX.2-dev-turbo")
+client = Client("hysts/SDXL")
 
 
 def generate(prompt: str, negprompt: str, seed: int, randomize_seed: bool, profile: gr.OAuthProfile | None) -> list[str | None]:
@@ -33,16 +34,26 @@ def generate(prompt: str, negprompt: str, seed: int, randomize_seed: bool, profi
         prompt=prompt,  # str  in 'Prompt' Textbox component
         negative_prompt=negprompt,  # str  in 'Negative prompt' Textbox component
         seed=actual_seed,  # float (numeric value between 0 and 2147483647) in 'Seed' Slider component
-        randomize_seed=randomize_seed,  # bool in 'Randomize seed' Checkbox component
+        #randomize_seed=randomize_seed,  # bool in 'Randomize seed' Checkbox component
         width=1024,  # float (numeric value between 1024 and 1536) in 'Width' Slider component
         height=1024,  # float (numeric value between 1024 and 1536) in 'Height' Slider component
-        guidance_scale=1.5,  # float (numeric value between 0 and 20) in 'Guidance scale' Slider component
-        num_inference_steps=8,  # float (numeric value between 4 and 12) in 'Number of inference steps' Slider component
-        api_name="/infer"
+        #guidance_scale=1.5,  # float (numeric value between 0 and 20) in 'Guidance scale' Slider component
+        #num_inference_steps=8,  # float (numeric value between 4 and 12) in 'Number of inference steps' Slider component
+        prompt_2="",
+        negative_prompt_2="",
+        use_negative_prompt=True,
+    	use_prompt_2=False,
+		use_negative_prompt_2=False,
+        guidance_scale_base=5,
+		guidance_scale_refiner=5,
+		num_inference_steps_base=25,
+		num_inference_steps_refiner=25,
+		apply_refiner=False,
+		api_name="/predict"
     )
 
-    generated_img_path: str | None = result[0] # Extracting the image path safely
-    returned_seed = result[1] # Extracting the seed from the result
+    generated_img_path: str | None = result # Extracting the image path safely
+    returned_seed =  actual_seed # Extracting the seed from the result
 
     metadata = {
         "prompt": prompt,
@@ -51,8 +62,8 @@ def generate(prompt: str, negprompt: str, seed: int, randomize_seed: bool, profi
         "randomize_seed": randomize_seed,
         "width": 1024,
         "height": 1024,
-        "guidance_scale": 1.5,
-        "num_inference_steps": 8,
+        "guidance_scale": 5,
+        "num_inference_steps": 25,
         "timestamp": str(datetime.datetime.now()),
     }
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as metadata_file:
