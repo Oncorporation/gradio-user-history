@@ -108,14 +108,17 @@ def render() -> None:
     )
     gr.Markdown(
         "User history is powered by"
-        " [Wauplin/gradio-user-history](https://huggingface.co/spaces/Wauplin/gradio-user-history). Integrate it to"
+        " [Surn/gradio-user-history](https://huggingface.co/spaces/Surn/gradio-user-history). Integrate it to"
         " your own Space in just a few lines of code!"
     )
     gallery.attach_load_event(_fetch_user_history, every=None)
 
     # Interactions
-    refresh_button.click(fn=_fetch_user_history, inputs=[], outputs=[gallery], queue=False)
-    export_button.click(fn=_export_user_history, inputs=[], outputs=[export_file], queue=False)
+    # `gr.LoginButton` provides the `profile` argument implicitly to event callbacks.
+    # Do not pass `inputs=[]` here, otherwise `_fetch_user_history` won't receive the active user,
+    # which can cause stale / incorrect gallery thumbnails.
+    refresh_button.click(fn=_fetch_user_history, outputs=[gallery], queue=False)
+    export_button.click(fn=_export_user_history, outputs=[export_file], queue=False)
 
     # Taken from https://github.com/gradio-app/gradio/issues/3324#issuecomment-1446382045
     delete_button.click(
