@@ -12,9 +12,9 @@ Key features:
 - Choose between images or video Gallery
 
 Useful links:
-- Demo: https://huggingface.co/spaces/Wauplin/gradio-user-history
-- README: https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/README.md
-- Source file: https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/user_history.py
+- Demo: https://huggingface.co/spaces/Surn/gradio-user-history
+- README: https://huggingface.co/spaces/Surn/gradio-user-history/blob/main/README.md
+- Source file: https://huggingface.co/spaces/Surn/gradio-user-history/blob/main/user_history.py
 - Discussions: https://huggingface.co/spaces/Wauplin/gradio-user-history/discussions
 - Development Updates: https://huggingface.co/spaces/Surn/gradio-user-history/
 

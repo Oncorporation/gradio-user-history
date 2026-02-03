@@ -1,4 +1,3 @@
-
 import json
 import os
 import shutil
@@ -161,14 +160,16 @@ def save_image(
         )
         return
 
-    # Copy image to storage
-    image_path = _copy_image(image, dst_folder=user_history._user_images_path(username))
+    unique_id = uuid4().hex[:8]
 
-    # Save new image + metadata
+    # Copy image to storage (unique name to avoid overwrites)
+    image_path = _copy_image(image, dst_folder=user_history._user_images_path(username), uniqueId=unique_id)
+
     if metadata is None:
         metadata = {}
     if "datetime" not in metadata:
         metadata["datetime"] = str(datetime.now())
+
     data = {"image_path": str(image_path), "label": label, "metadata": metadata}
     with user_history._user_lock(username):
         with user_history._user_jsonl_path(username).open("a") as f:

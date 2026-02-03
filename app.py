@@ -99,7 +99,7 @@ with gr.Blocks(css="style.css") as demo:
 
 with gr.Blocks(theme='Surn/beeuty@==0.5.25') as demo_with_history:
     with gr.Tab("README"):
-        gr.Markdown(Path("README.md").read_text(encoding="utf-8").split("---")[-1])
+        gr.Markdown(Path("README.md", sanitize_html=False).read_text(encoding="utf-8").split("---")[-1])
     with gr.Tab("Demo"):
         demo.render()
     with gr.Tab("Past generations"):

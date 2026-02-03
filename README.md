@@ -104,9 +104,9 @@ And you're done!
 
 ## Useful links
 
-- **Demo:** https://huggingface.co/spaces/Wauplin/gradio-user-history
-- **README:** https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/README.md
-- **Source file:** https://huggingface.co/spaces/Wauplin/gradio-user-history/blob/main/src/gradio_user_history/_user_history.py
+- **Demo:** https://huggingface.co/spaces/Surn/gradio-user-history
+- **README:** https://huggingface.co/spaces/Surn/gradio-user-history/blob/main/README.md
+- **Source file:** https://huggingface.co/spaces/Surn/gradio-user-history/blob/main/src/gradio_user_history/_user_history.py
 - **Questions and feedback:** https://huggingface.co/spaces/Wauplin/gradio-user-history/discussions
 - **Development Updates**: https://huggingface.co/spaces/Surn/gradio-user-history/
 
