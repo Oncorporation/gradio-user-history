@@ -1,7 +1,7 @@
 ---
 title: Gradio User History
 sdk: gradio
-sdk_version: 5.34.1
+sdk_version: 5.49.1
 app_file: app.py
 emoji: 🖼️
 colorFrom: gray
@@ -10,17 +10,18 @@ pinned: false
 fullWidth: true
 hf_oauth: true
 space_ci:
-  trusted_authors: 
+  trusted_authors: null
   private: auto
-  secrets: 
-    - SPACE_CI_SECRET
-    - HF_TOKEN
+  secrets:
+  - SPACE_CI_SECRET
+  - HF_TOKEN
   hardware: cpu-basic
+short_description: caches generated image, video, audio and document files
 ---
 
 # Bring User History to your Spaces 🚀
 
-**Gradio User History** is a plugin (and package) that caches generated images for your Space users.
+**Gradio User History** is a plugin (and package) that caches generated image, video, audio and document files with their metadata for your Space users.
 
 ## Key features:
 
