@@ -16,7 +16,7 @@ from gradio_client import Client
 #enable_space_ci()
 
 
-client = Client("multimodalart/stable-diffusion-3.5-large-turboX")
+client = Client("multimodalart/FLUX.2-dev-turbo")
 
 
 def generate(prompt: str, negprompt: str, seed: int, randomize_seed: bool, profile: gr.OAuthProfile | None) -> list[str | None]:
