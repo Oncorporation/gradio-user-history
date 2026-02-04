@@ -7,10 +7,8 @@ import wave
 from collections.abc import Callable
 from datetime import datetime
 from functools import cache
-from io import BytesIO
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 from uuid import uuid4
 
 import filetype
@@ -22,6 +20,12 @@ from filelock import FileLock
 from mutagen.mp3 import EasyMP3
 from PIL import Image, PngImagePlugin
 from tqdm import tqdm
+
+from .file_utils import (
+    download_and_save_image,
+    get_file_parts,
+    rename_file_to_lowercase_extension,
+)
 
 
 user_profile = gr.State(None)
@@ -38,8 +42,14 @@ def get_profile() -> gr.OAuthProfile | None:
         gr.OAuthProfile | None: The currently logged-in user's profile, or None if no user is logged in.
     """
     global user_profile
-    """Return the user profile if logged in, None otherwise."""
-
+    if hasattr(user_profile, "value"):
+        val = user_profile.value
+        if isinstance(val, (list, tuple)):
+            for item in val:
+                if item is not None:
+                    return item
+            return None
+        return val
     return user_profile
 
 
@@ -496,7 +506,7 @@ def _copy_image(image: Image.Image | np.ndarray | str | Path, dst_folder: Path, 
         # If image is a string, check if it's a URL.
         if isinstance(image, str):
             if image.startswith("http://") or image.startswith("https://"):
-                return _download_and_save_image(image, dst_folder)
+                return download_and_save_image(image, dst_folder)
             else:
                 # Assume it's a local filepath string.
                 image = Path(image)
@@ -563,8 +573,8 @@ def _add_metadata(file_location: Path, metadata: dict[str, Any], support_path: s
         if file_type not in valid_file_types:
             raise ValueError("Invalid file type. Valid file types are .wav, .mp3, .mp4, .png")
 
-        directory, filename, name, ext, new_ext = _get_file_parts(file_location)
-        new_file_location = _rename_file_to_lowercase_extension(os.path.join(directory, name + "_h" + new_ext))
+        directory, filename, name, ext, new_ext = get_file_parts(file_location)
+        new_file_location = rename_file_to_lowercase_extension(os.path.join(directory, name + "_h" + new_ext))
 
         if file_type == ".wav":
             # Open and process .wav file
@@ -649,108 +659,6 @@ def _archives_path() -> Path:
     path = Path(__file__).parent / "_user_history_exports"
     path.mkdir(parents=True, exist_ok=True)
     return path
-
-
-def _get_file_parts(file_path: str):
-    # Split the path into directory and filename
-    directory, filename = os.path.split(file_path)
-
-    # Split the filename into name and extension
-    name, ext = os.path.splitext(filename)
-
-    # Convert the extension to lowercase
-    new_ext = ext.lower()
-    return directory, filename, name, ext, new_ext
-
-
-def _rename_file_to_lowercase_extension(file_path: str) -> str:
-    """
-    Renames a file's extension to lowercase in place.
-
-    Parameters:
-        file_path (str): The original file path.
-
-    Returns:
-        str: The new file path with the lowercase extension.
-
-    Raises:
-        OSError: If there is an error renaming the file (e.g., file not found, permissions issue).
-    """
-    directory, filename, name, ext, new_ext = _get_file_parts(file_path)
-    # If the extension changes, rename the file
-    if ext != new_ext:
-        new_filename = name + new_ext
-        new_file_path = os.path.join(directory, new_filename)
-        try:
-            os.rename(file_path, new_file_path)
-            print(f"Rename {file_path} to {new_file_path}\n")
-        except Exception as e:
-            print(f"os.rename failed: {e}. Falling back to binary copy operation.")
-            try:
-                # Read the file in binary mode and write it to new_file_path
-                with open(file_path, "rb") as f:
-                    data = f.read()
-                with open(new_file_path, "wb") as f:
-                    f.write(data)
-                    print(f"Copied {file_path} to {new_file_path}\n")
-                # Optionally, remove the original file after copying
-                # os.remove(file_path)
-            except Exception as inner_e:
-                print(f"Failed to copy file from {file_path} to {new_file_path}: {inner_e}")
-                raise inner_e
-        return new_file_path
-    else:
-        return file_path
-
-
-def _get_unique_file_path(directory, filename, file_ext, counter=0):
-    """
-    Recursively increments the filename until a unique path is found.
-
-    Parameters:
-        directory (str): The directory for the file.
-        filename (str): The base filename.
-        file_ext (str): The file extension including the leading dot.
-        counter (int): The current counter value to append.
-
-    Returns:
-        str: A unique file path that does not exist.
-    """
-    if counter == 0:
-        filepath = os.path.join(directory, f"{filename}{file_ext}")
-    else:
-        filepath = os.path.join(directory, f"{filename}{counter}{file_ext}")
-
-    if not os.path.exists(filepath):
-        return filepath
-    else:
-        return _get_unique_file_path(directory, filename, file_ext, counter + 1)
-
-
-def _download_and_save_image(url: str, dst_folder: Path) -> Path:
-    """
-    Downloads an image from a URL, verifies it with PIL, and saves it in dst_folder with a unique filename.
-
-    Args:
-        url (str): The image URL.
-        dst_folder (Path): The destination folder for the image.
-
-    Returns:
-        Path: The saved image's file path.
-    """
-    response = requests.get(url, timeout=20)
-    response.raise_for_status()
-    pil_image = Image.open(BytesIO(response.content))
-
-    parsed_url = urlparse(url)
-    original_filename = os.path.basename(parsed_url.path)  # e.g., "background.png"
-    base, ext = os.path.splitext(original_filename)
-
-    # Use get_unique_file_path from file_utils.py to generate a unique file path.
-    unique_filepath_str = _get_unique_file_path(str(dst_folder), base, ext)
-    dst = Path(unique_filepath_str)
-    pil_image.save(dst)
-    return dst
 
 
 #################
