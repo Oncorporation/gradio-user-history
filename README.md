@@ -50,42 +50,35 @@ Want more? Please open an issue in the [Community Tab](https://huggingface.co/sp
 
   **Current Status:** Tested on Gradio 6.10.0
 
-  ### Key Changes for Gradio 6 Compatibility
 
-  The following breaking changes in Gradio 6 will require updates:
 
-  1. **`gr.LogoutButton` removed** → Must use `gr.LoginButton` only
-     - Current code: `gr.LoginButton()` ✅ (already compatible)
-     - No changes needed in user history code
-
-  2. **`gr.Progress()` in default arguments** → Fixed
-     - Current pattern: `progress: gr.Progress | None = None`
-     - Gradio 6 no longer sees a function call in the default argument
-     - Progress now initializes lazily inside the function
-
-  3. **Gallery component updated** ✅
-     - Use `buttons=["share", "download"]` instead of the removed share/download flags
-
-  4. **OAuth & `gr.OAuthProfile` unchanged** ✅
-     - OAuth functionality fully compatible with Gradio 6
-     - `gr.LoginButton` behavior consistent between versions
-
-  5. **Event system compatible** ✅
-     - `.click()`, `.then()`, `.attach_load_event()` all supported
-     - Implicit event arguments unchanged
-
-  ### Migration Checklist
-
-  - [x] Update `requirements.txt`: `gradio[oauth]>=6.0,<7.0`
-  - [x] Update `README.md`: `sdk_version: 6.10.0`
-  - [x] Test OAuth login/logout flow
-  - [x] Test file saving and export
-  - [x] Test gallery display
-  - [x] Verify MCP server support (`mcp_server=True` in `launch()`)
-
-  ## Integration
+## Integration
 
 Integrate *Gradio User History* in just a few steps:
+
+### Choosing Your Gallery Display Type
+
+Choose which file type to display in your gallery:
+
+**In your app code (app.py):**
+
+```python
+# Display IMAGES in the gallery (default)
+gr_user_history.setup(display_type="image_path")
+
+# Display VIDEOS in the gallery
+gr_user_history.setup(display_type="video_path")
+
+# Display AUDIO files in the gallery
+gr_user_history.setup(display_type="audio_path")
+
+# Display DOCUMENTS in the gallery
+gr_user_history.setup(display_type="document_path")
+```
+
+The `display_type` parameter tells the gallery which saved file type to display. All file types are saved automatically, so you can switch between them anytime.
+
+---
 
 **1. Enable OAuth to your Space**
 
