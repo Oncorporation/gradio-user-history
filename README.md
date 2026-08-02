@@ -131,7 +131,7 @@ with gr.Blocks() as demo:
     (...)
 
     with gr.Accordion("Past generations", open=False):
-        # => OPTIONALLY display images or videos in the history gallery with display_type: "image_path" or "video_path"
+        # => OPTIONALLY display images or videos in the history gallery with display_type: "image_path" or "video_path" or "audio_path" or "document_path"
         gr_user_history.setup(display_type="image_path")
         gr_user_history.render()
 ```

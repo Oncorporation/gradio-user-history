@@ -106,7 +106,7 @@ with gr.Blocks() as demo_with_history:
     with gr.Tab("Past generations"):
         gr_user_history.setup(
             display_type="image_path"
-        )  # optional, this is where you would set the display type = "video_path" if you want to display videos
+        )  # optional, this is where you would set the display type = "video_path" if you want to display videos *see README.md for more details*
         gr_user_history.render()
     with gr.Row():
         gr.HTML(value=versions_html(), visible=True, elem_id="versions")
