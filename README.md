@@ -1,7 +1,7 @@
 ---
 title: Gradio User History
 sdk: gradio
-sdk_version: 5.49.1
+sdk_version: 6.10.0
 app_file: app.py
 emoji: 🖼️
 colorFrom: gray
@@ -33,11 +33,57 @@ short_description: caches generated image, video, audio and document files
 - **Admin** panel to check configuration and disk usage .
 - **Progress bar** to show status of saving files
 - Choose between images or video **Gallery**
-- Compatible with **Gradio 4.0+** and **Gradio 5.0+**
+- Compatible with **Gradio 4.0+**, **Gradio 5.0+**, and **Gradio 6.0+**
 
 Want more? Please open an issue in the [Community Tab](https://huggingface.co/spaces/Wauplin/gradio-user-history/discussions)! This is meant to be a community-driven implementation, enhanced by user feedback and contributions!
 
-## Integration
+## Recent Changes
+
+**Latest refactoring improvements:**
+- Simplified nested context managers for cleaner file handling
+- Improved code quality with modern Python syntax (`super()` improvements)
+- Enhanced admin section with better profile normalization for string-based profiles
+- Pre-commit compliance and linting improvements
+- **Last Updated:** August 2, 2026
+
+  ## Gradio 6.0 Migration Status
+
+  **Current Status:** Tested on Gradio 6.10.0
+
+  ### Key Changes for Gradio 6 Compatibility
+
+  The following breaking changes in Gradio 6 will require updates:
+
+  1. **`gr.LogoutButton` removed** → Must use `gr.LoginButton` only
+     - Current code: `gr.LoginButton()` ✅ (already compatible)
+     - No changes needed in user history code
+
+  2. **`gr.Progress()` in default arguments** → Fixed
+     - Current pattern: `progress: gr.Progress | None = None`
+     - Gradio 6 no longer sees a function call in the default argument
+     - Progress now initializes lazily inside the function
+
+  3. **Gallery component updated** ✅
+     - Use `buttons=["share", "download"]` instead of the removed share/download flags
+
+  4. **OAuth & `gr.OAuthProfile` unchanged** ✅
+     - OAuth functionality fully compatible with Gradio 6
+     - `gr.LoginButton` behavior consistent between versions
+
+  5. **Event system compatible** ✅
+     - `.click()`, `.then()`, `.attach_load_event()` all supported
+     - Implicit event arguments unchanged
+
+  ### Migration Checklist
+
+  - [x] Update `requirements.txt`: `gradio[oauth]>=6.0,<7.0`
+  - [x] Update `README.md`: `sdk_version: 6.10.0`
+  - [x] Test OAuth login/logout flow
+  - [x] Test file saving and export
+  - [x] Test gallery display
+  - [x] Verify MCP server support (`mcp_server=True` in `launch()`)
+
+  ## Integration
 
 Integrate *Gradio User History* in just a few steps:
 
@@ -91,9 +137,9 @@ def generate(prompt: str, profile: gr.OAuthProfile | None):
 with gr.Blocks() as demo:
     (...)
 
-    with gr.Accordion("Past generations", open=False):        
+    with gr.Accordion("Past generations", open=False):
         # => OPTIONALLY display images or videos in the history gallery with display_type: "image_path" or "video_path"
-        gr_user_history.setup(display_type="image_path") 
+        gr_user_history.setup(display_type="image_path")
         gr_user_history.render()
 ```
 

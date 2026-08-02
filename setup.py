@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 
 def get_version() -> str:
     rel_path = "src/gradio_user_history/__init__.py"
-    with open(rel_path, "r") as fp:
+    with open(rel_path) as fp:
         for line in fp.read().splitlines():
             if line.startswith("__version__"):
                 delim = '"' if '"' in line else "'"
@@ -12,7 +12,7 @@ def get_version() -> str:
 
 
 install_requires = [
-    "gradio[oauth]>=3.44",
+    "gradio[oauth]>=6.0,<7.0",
 ]
 
 extras = {}
@@ -23,6 +23,8 @@ extras["dev"] = [
     "mypy",
 ]
 
+with open("README.md", encoding="utf-8") as f:
+    long_description = f.read()
 
 setup(
     name="gradio_user_history",
@@ -30,7 +32,7 @@ setup(
     author="Lucain Pouget",
     author_email="lucain@huggingface.co",
     description="A package to store user history in a gradio app.",
-    long_description=open("README.md", "r", encoding="utf-8").read(),
+    long_description=long_description,
     long_description_content_type="text/markdown",
     keywords="gradio oauth machine-learning",
     license="Apache",
@@ -52,6 +54,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
 )

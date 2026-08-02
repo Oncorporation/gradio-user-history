@@ -2,7 +2,7 @@
 #gradio-space-ci @ git+https://huggingface.co/spaces/Wauplin/gradio-space-ci@0.2.3
 filetype @ git+https://github.com/h2non/filetype.py.git
 gradio-client
-gradio[oauth]
+gradio[oauth]>=6.0,<7.0
 gradio[mcp]
 mutagen
 tqdm

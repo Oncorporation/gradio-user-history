@@ -9,11 +9,26 @@ no_implicit_optional = true
 scripts_are_modules = true
 
 [tool.ruff]
-# Ignored rules:
-#   "E501" -> line length violation
-ignore = ["E501"]
-select = ["E", "F", "I", "W"]
 line-length = 119
+target-version = "py310"          # or "py310" if you no longer care about 3.8/3.9
 
-[tool.ruff.isort]
+[tool.ruff.lint]
+# Keep your existing rules and add useful ones
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # isort
+    "W",    # pycodestyle warnings
+    "UP",   # pyupgrade (modernize syntax)
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "S",    # flake8-bandit (security / hardcoded secrets)
+]
+ignore = [
+    "E501",   # line length (you already ignore this)
+    "S101",   # assert statements (common in tests)
+    "UP038",   # Allow isinstance(x, (A, B)) instead of A | B
+]
+
+[tool.ruff.lint.isort]
 lines-after-imports = 2
