@@ -179,6 +179,7 @@ def save_image(
     # Copy image to storage (unique name to avoid overwrites)
     image_path = _copy_image(image, dst_folder=user_history._user_images_path(username), uniqueId=unique_id)
 
+    # Save new image + metadata
     if metadata is None:
         metadata = {}
     if "datetime" not in metadata:

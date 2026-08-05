@@ -44,9 +44,50 @@ def rename_file_to_lowercase_extension(file_path: str) -> str:
                     print(f"Copied {file_path} to {new_file_path}\n")
             except Exception as inner_e:
                 print(f"Failed to copy file from {file_path} to {new_file_path}: {inner_e}")
-                raise
+                raise inner_e
         return new_file_path
     return file_path
+
+
+def get_filename(file):
+    # extract filename from file object
+    filename = None
+    if file is not None:
+        filename = file.name
+    return filename
+
+
+def convert_title_to_filename(title):
+    # convert title to filename
+    filename = title.lower().replace(" ", "_").replace("/", "_")
+    return filename
+
+
+def get_filename_from_filepath(filepath):
+    file_name = os.path.basename(filepath)
+    file_base, file_extension = os.path.splitext(file_name)
+    return file_base, file_extension
+
+
+def delete_file(file_path: str) -> None:
+    """
+    Deletes the specified file.
+
+    Parameters:
+        file_path (str): The path to thefile to delete.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        Exception: If there is an error deleting the file.
+    """
+    try:
+        path = Path(file_path)
+        path.unlink()
+        print(f"Deleted original file: {file_path}")
+    except FileNotFoundError:
+        print(f"File not found: {file_path}")
+    except Exception as e:
+        print(f"Error deleting file: {e}")
 
 
 def get_unique_file_path(directory, filename, file_ext, counter=0):
@@ -99,4 +140,38 @@ def download_and_save_image(url: str, dst_folder: Path, token: str | None = None
     dst = Path(unique_filepath_str)
     dst_folder.mkdir(parents=True, exist_ok=True)
     pil_image.save(dst)
+    return dst
+
+
+def download_and_save_file(url: str, dst_folder: Path, token: str = None) -> Path:
+    """
+    Downloads a binary file (e.g., audio or video) from a URL with authentication if a token is provided,
+    and saves it in dst_folder with a unique filename.
+
+    Args:
+        url (str): The file URL.
+        dst_folder (Path): The destination folder for the file.
+        token (str, optional): A valid Bearer token.
+
+    Returns:
+        Path: The saved file's path.
+    """
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    response = requests.get(url, headers=headers, timeout=20)
+    response.raise_for_status()
+
+    parsed_url = urlparse(url)
+    original_filename = os.path.basename(parsed_url.path)
+    base, ext = os.path.splitext(original_filename)
+
+    unique_filepath_str = get_unique_file_path(str(dst_folder), base, ext)
+    dst = Path(unique_filepath_str)
+    dst_folder.mkdir(parents=True, exist_ok=True)
+
+    with open(dst, "wb") as f:
+        f.write(response.content)
+
     return dst
