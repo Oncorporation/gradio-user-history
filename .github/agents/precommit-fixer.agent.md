@@ -282,3 +282,37 @@ Then proceed through the workflow.
 - You can also say: “Use the precommit-fixer agent” or “Start the pre-commit fixer”.
 - The agent should treat the repository root as the working directory.
 - If the terminal command fails because pre-commit is not installed, guide the user through the **Getting Started / Setup** section.
+
+---
+
+## Optional: GitHub Actions CI (pre-commit)
+
+When offering to set up CI, the agent must first ask the user:
+
+- "Would you like to add an optional GitHub Actions workflow that runs pre-commit on push/PR?"
+
+If the user answers YES, the agent should create the file `.github/workflows/pre-commit.yaml` in the repository with the following template (build from scratch) and then confirm creation with the user before committing:
+
+```yaml
+name: pre-commit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: pre-commit/action@v3.0.1
+```
+
+Notes:
+- Do **not** create the workflow file unless the user explicitly approves.
+- After creating the file, show the user the exact file path and contents and ask whether to commit and push to the current branch.
+- If the repository is intended for Hugging Face Spaces only, remind the user that GitHub Actions will only run when the repo is hosted on GitHub; creating the file is harmless but optional.
